@@ -25,6 +25,7 @@
 #include "ua_timer.h"
 #include "ua_util_internal.h"
 #include "ua_workqueue.h"
+#include "ua_service_table_internal.h"
 
 _UA_BEGIN_DECLS
 
@@ -106,6 +107,9 @@ struct UA_Server {
 #ifdef UA_ENABLE_PUBSUB
     UA_PubSubManager pubSubManager;
 #endif
+
+   /* Overwritten service table */
+   UA_ServiceTable serviceTable;
 };
 
 /*****************/

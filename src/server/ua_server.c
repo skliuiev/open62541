@@ -190,6 +190,8 @@ void UA_Server_delete(UA_Server *server) {
     /* Clean up the config */
     UA_ServerConfig_clean(&server->config);
 
+    UA_ServiceTable_clean(&server->serviceTable);
+
     /* Delete the server itself */
     UA_free(server);
 }

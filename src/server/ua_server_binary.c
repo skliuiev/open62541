@@ -564,20 +564,25 @@ processMSG(UA_Server *server, UA_SecureChannel *channel,
     UA_Boolean sessionRequired = true;
     const UA_DataType *requestType = NULL;
     const UA_DataType *responseType = NULL;
-    getServicePointers(requestTypeId.identifier.numeric, &requestType,
-                       &responseType, &service, &sessionRequired);
+    UA_Server_DispatchService(server, requestTypeId.identifier.numeric, &requestType,
+                              &responseType, &service, &sessionRequired);
     if(!requestType) {
-        if(requestTypeId.identifier.numeric == 787) {
-            UA_LOG_INFO_CHANNEL(&server->config.logger, channel,
-                                "Client requested a subscription, " \
-                                "but those are not enabled in the build");
-        } else {
-            UA_LOG_INFO_CHANNEL(&server->config.logger, channel,
-                                "Unknown request with type identifier %i",
-                                requestTypeId.identifier.numeric);
+        getServicePointers(requestTypeId.identifier.numeric, &requestType, &responseType,
+                           &service, &sessionRequired);
+        if(!requestType) {
+            if(requestTypeId.identifier.numeric == 787) {
+                UA_LOG_INFO_CHANNEL(&server->config.logger, channel,
+                                    "Client requested a subscription, "
+                                    "but those are not enabled in the build");
+            } else {
+                UA_LOG_INFO_CHANNEL(&server->config.logger, channel,
+                                    "Unknown request with type identifier %i",
+                                    requestTypeId.identifier.numeric);
+            }
+            return sendServiceFault(channel, msg, requestPos,
+                                    &UA_TYPES[UA_TYPES_SERVICEFAULT], requestId,
+                                    UA_STATUSCODE_BADSERVICEUNSUPPORTED);
         }
-        return sendServiceFault(channel, msg, requestPos, &UA_TYPES[UA_TYPES_SERVICEFAULT],
-                                requestId, UA_STATUSCODE_BADSERVICEUNSUPPORTED);
     }
     UA_assert(responseType);
 

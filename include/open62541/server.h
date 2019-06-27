@@ -49,6 +49,25 @@ void UA_EXPORT UA_Server_delete(UA_Server *server);
 UA_ServerConfig UA_EXPORT *
 UA_Server_getConfig(UA_Server *server);
 
+/** Service
+ *  Service handler callback */
+
+typedef void (*UA_ServiceCallback)(UA_Server *, void *, const void *request,
+                           void *response);
+
+/* Create new service overrite entry in the server service dispatch table
+ * 
+ * @param server The server object.
+ * @param requestNodeId
+ * @param requestTypeId
+ * @param responseTypeId
+ * @param requiresSession
+ */
+UA_StatusCode
+UA_Server_AddService(UA_Server *server, UA_UInt32 requestNodeId, UA_UInt32 requestTypeId,
+                     UA_UInt32 responseTypeId, UA_ServiceCallback service,
+                     UA_Boolean requiresSession);
+
 /* Runs the main loop of the server. In each iteration, this calls into the
  * networklayers to see if messages have arrived.
  *
