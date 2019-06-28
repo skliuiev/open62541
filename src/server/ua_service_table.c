@@ -24,13 +24,18 @@ UA_Server_AddService(UA_Server *server, UA_UInt32 requestNodeId, UA_UInt32 reque
         return UA_STATUSCODE_GOOD;
     }
 
-    if(NULL != server->serviceTable.entries &&
+    if(NULL != table->entries &&
        table->size == sizeof(*table->entries) / sizeof(table->entries[0])) {
-        table->entries = UA_realloc(table->entries, sizeof(struct UA_ServiceTableEntry) *
-                                                        (table->size + 1));
+        UA_UInt16 newSize = table->size + 1;
+        void *entries = UA_realloc(table->entries, sizeof(struct UA_ServiceTableEntry) * newSize);
+        if(NULL != entries) {
+            table->entries = entries;
+        }
+
         if(NULL == table->entries) {
             return UA_STATUSCODE_BADOUTOFMEMORY;
         }
+
         table->entries[table->size].requestNodeId = requestNodeId;
         table->entries[table->size].requestTypeId = requestTypeId;
         table->entries[table->size].responceTypeId = responseTypeId;
@@ -49,7 +54,6 @@ UA_Server_DispatchService(UA_Server *server, const UA_UInt32 requestNodeId,
                           UA_Boolean *requiresSession) {
     UA_ServiceTable *table = &server->serviceTable;
     for(int i = 0; i < table->size; ++i) {
-        UA_ServiceTableEntry entry = table->entries[i];
         if(requestNodeId == table->entries[i].requestNodeId) {
             *service = (UA_Service)table->entries[i].service;
             *requestType = &UA_TYPES[table->entries[i].requestTypeId];
@@ -61,8 +65,10 @@ UA_Server_DispatchService(UA_Server *server, const UA_UInt32 requestNodeId,
 
 void
 UA_ServiceTable_clean(UA_ServiceTable *serviceTable) {
-    if(NULL != serviceTable || NULL != serviceTable->entries) {
-        UA_free(serviceTable->entries);
-        serviceTable->size = 0;
+    if(NULL != serviceTable) {
+        if(NULL != serviceTable->entries) {
+            UA_free(serviceTable->entries);
+            serviceTable->size = 0;
+        }
     }
 }

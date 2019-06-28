@@ -26,7 +26,7 @@ struct UA_ServiceTable {
 };
 
 void
-UA_Server_DispatchService(UA_Server *server, UA_UInt32 requestNodeId,
+UA_Server_DispatchService(UA_Server *server, const UA_UInt32 requestNodeId,
                           const UA_DataType **requestType,
                           const UA_DataType **responseType, UA_Service *service,
                           UA_Boolean *requiresSession);
