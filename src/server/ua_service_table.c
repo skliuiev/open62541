@@ -24,8 +24,7 @@ UA_Server_AddService(UA_Server *server, UA_UInt32 requestNodeId, UA_UInt32 reque
         return UA_STATUSCODE_GOOD;
     }
 
-    if(NULL != table->entries &&
-       table->size == sizeof(*table->entries) / sizeof(table->entries[0])) {
+    if(NULL != table->entries) {
         UA_UInt16 newSize = table->size + 1;
         void *entries = UA_realloc(table->entries, sizeof(struct UA_ServiceTableEntry) * newSize);
         if(NULL != entries) {
