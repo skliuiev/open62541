@@ -2,7 +2,7 @@
  * See http://creativecommons.org/publicdomain/zero/1.0/ for more information.
  *
  * Copyright 2019 (c) Kalycito Infotech Private Limited
- *
+ * Copyright 2019 (c) Fraunhofer IOSB (Author: Julius Pfrommer)
  */
 
 #ifdef _MSC_VER
@@ -17,6 +17,8 @@
 #include <stdlib.h>
 
 #include "common.h"
+
+#define MAX_OPERATION_LIMIT 10000
 
 /* This server is configured to the Compliance Testing Tools (CTT) against. The
  * corresponding CTT configuration is available at
@@ -55,6 +57,240 @@ readTimeData(UA_Server *server,
         value->sourceTimestamp = currentTime;
     }
     return UA_STATUSCODE_GOOD;
+}
+
+static UA_StatusCode
+readRandomBoolData(UA_Server *server,
+             const UA_NodeId *sessionId, void *sessionContext,
+             const UA_NodeId *nodeId, void *nodeContext,
+             UA_Boolean sourceTimeStamp,
+             const UA_NumericRange *range, UA_DataValue *value) {
+    if(range) {
+        value->hasStatus = true;
+        value->status = UA_STATUSCODE_BADINDEXRANGEINVALID;
+        return UA_STATUSCODE_GOOD;
+    }
+    UA_Boolean toggle = !((UA_UInt32_random() % 10 ) % 2);
+    UA_Variant_setScalarCopy(&value->value, &toggle, &UA_TYPES[UA_TYPES_BOOLEAN]);
+    value->hasValue = true;
+    if(sourceTimeStamp) {
+        value->hasSourceTimestamp = true;
+        value->sourceTimestamp = UA_DateTime_now();
+    }
+    return UA_STATUSCODE_GOOD;
+}
+
+static UA_StatusCode
+readRandomInt16Data(UA_Server *server,
+             const UA_NodeId *sessionId, void *sessionContext,
+             const UA_NodeId *nodeId, void *nodeContext,
+             UA_Boolean sourceTimeStamp,
+             const UA_NumericRange *range, UA_DataValue *value) {
+    if(range) {
+        value->hasStatus = true;
+        value->status = UA_STATUSCODE_BADINDEXRANGEINVALID;
+        return UA_STATUSCODE_GOOD;
+    }
+    UA_Int16 toggle = (UA_Int16)UA_UInt32_random();
+    UA_Variant_setScalarCopy(&value->value, &toggle, &UA_TYPES[UA_TYPES_INT16]);
+    value->hasValue = true;
+    if(sourceTimeStamp) {
+        value->hasSourceTimestamp = true;
+        value->sourceTimestamp = UA_DateTime_now();
+    }
+    return UA_STATUSCODE_GOOD;
+}
+
+static UA_StatusCode
+readRandomInt32Data(UA_Server *server,
+             const UA_NodeId *sessionId, void *sessionContext,
+             const UA_NodeId *nodeId, void *nodeContext,
+             UA_Boolean sourceTimeStamp,
+             const UA_NumericRange *range, UA_DataValue *value) {
+    if(range) {
+        value->hasStatus = true;
+        value->status = UA_STATUSCODE_BADINDEXRANGEINVALID;
+        return UA_STATUSCODE_GOOD;
+    }
+    UA_Int32 toggle = (UA_Int32)UA_UInt32_random();
+    UA_Variant_setScalarCopy(&value->value, &toggle, &UA_TYPES[UA_TYPES_INT32]);
+    value->hasValue = true;
+    if(sourceTimeStamp) {
+        value->hasSourceTimestamp = true;
+        value->sourceTimestamp = UA_DateTime_now();
+    }
+    return UA_STATUSCODE_GOOD;
+}
+
+static UA_StatusCode
+readRandomInt64Data(UA_Server *server,
+             const UA_NodeId *sessionId, void *sessionContext,
+             const UA_NodeId *nodeId, void *nodeContext,
+             UA_Boolean sourceTimeStamp,
+             const UA_NumericRange *range, UA_DataValue *value) {
+    if(range) {
+    value->hasStatus = true;
+    value->status = UA_STATUSCODE_BADINDEXRANGEINVALID;
+    return UA_STATUSCODE_GOOD;
+    }
+        UA_Int64 toggle = (UA_Int64)UA_UInt32_random();
+        UA_Variant_setScalarCopy(&value->value, &toggle, &UA_TYPES[UA_TYPES_INT64]);
+        value->hasValue = true;
+    if(sourceTimeStamp) {
+        value->hasSourceTimestamp = true;
+        value->sourceTimestamp = UA_DateTime_now();
+    }
+    return UA_STATUSCODE_GOOD;
+}
+
+static UA_StatusCode
+readRandomUInt16Data(UA_Server *server,
+             const UA_NodeId *sessionId, void *sessionContext,
+             const UA_NodeId *nodeId, void *nodeContext,
+             UA_Boolean sourceTimeStamp,
+             const UA_NumericRange *range, UA_DataValue *value) {
+    if(range) {
+        value->hasStatus = true;
+        value->status = UA_STATUSCODE_BADINDEXRANGEINVALID;
+        return UA_STATUSCODE_GOOD;
+    }
+    UA_UInt16 toggle = (UA_UInt16)UA_UInt32_random();
+    UA_Variant_setScalarCopy(&value->value, &toggle, &UA_TYPES[UA_TYPES_UINT16]);
+    value->hasValue = true;
+    if(sourceTimeStamp) {
+        value->hasSourceTimestamp = true;
+        value->sourceTimestamp = UA_DateTime_now();
+    }
+    return UA_STATUSCODE_GOOD;
+}
+
+static UA_StatusCode
+readRandomUInt32Data(UA_Server *server,
+             const UA_NodeId *sessionId, void *sessionContext,
+             const UA_NodeId *nodeId, void *nodeContext,
+             UA_Boolean sourceTimeStamp,
+             const UA_NumericRange *range, UA_DataValue *value) {
+    if(range) {
+        value->hasStatus = true;
+        value->status = UA_STATUSCODE_BADINDEXRANGEINVALID;
+        return UA_STATUSCODE_GOOD;
+    }
+    UA_UInt32 toggle = UA_UInt32_random();
+    UA_Variant_setScalarCopy(&value->value, &toggle, &UA_TYPES[UA_TYPES_UINT32]);
+    value->hasValue = true;
+    if(sourceTimeStamp) {
+        value->hasSourceTimestamp = true;
+        value->sourceTimestamp = UA_DateTime_now();
+    }
+    return UA_STATUSCODE_GOOD;
+}
+
+static UA_StatusCode
+readRandomUInt64Data(UA_Server *server,
+             const UA_NodeId *sessionId, void *sessionContext,
+             const UA_NodeId *nodeId, void *nodeContext,
+             UA_Boolean sourceTimeStamp,
+             const UA_NumericRange *range, UA_DataValue *value) {
+    if(range) {
+        value->hasStatus = true;
+        value->status = UA_STATUSCODE_BADINDEXRANGEINVALID;
+        return UA_STATUSCODE_GOOD;
+    }
+    UA_UInt64 toggle = UA_UInt32_random();
+    UA_Variant_setScalarCopy(&value->value, &toggle, &UA_TYPES[UA_TYPES_UINT64]);
+    value->hasValue = true;
+    if(sourceTimeStamp) {
+        value->hasSourceTimestamp = true;
+        value->sourceTimestamp = UA_DateTime_now();
+    }
+    return UA_STATUSCODE_GOOD;
+}
+
+static UA_StatusCode
+readRandomStringData (UA_Server *server,
+             const UA_NodeId *sessionId, void *sessionContext,
+             const UA_NodeId *nodeId, void *nodeContext,
+             UA_Boolean sourceTimeStamp,
+             const UA_NumericRange *range, UA_DataValue *value) {
+    if(range) {
+        value->hasStatus = true;
+        value->status = UA_STATUSCODE_BADINDEXRANGEINVALID;
+        return UA_STATUSCODE_GOOD;
+    }
+    char randomName[12];
+    UA_snprintf(randomName, 12, "Random%d", UA_UInt32_random());
+    UA_String toggle = UA_STRING(randomName);
+    UA_Variant_setScalarCopy(&value->value, &toggle, &UA_TYPES[UA_TYPES_STRING]);
+    value->hasValue = true;
+    if(sourceTimeStamp) {
+        value->hasSourceTimestamp = true;
+        value->sourceTimestamp = UA_DateTime_now();
+    }
+   return UA_STATUSCODE_GOOD;
+}
+
+static UA_StatusCode
+readRandomFloatData (UA_Server *server,
+             const UA_NodeId *sessionId, void *sessionContext,
+             const UA_NodeId *nodeId, void *nodeContext,
+             UA_Boolean sourceTimeStamp,
+             const UA_NumericRange *range, UA_DataValue *value) {
+    if(range) {
+        value->hasStatus = true;
+        value->status = UA_STATUSCODE_BADINDEXRANGEINVALID;
+        return UA_STATUSCODE_GOOD;
+    }
+    UA_Float toggle = (UA_Float)UA_UInt32_random();
+    UA_Variant_setScalarCopy(&value->value, &toggle, &UA_TYPES[UA_TYPES_FLOAT]);
+    value->hasValue = true;
+    if(sourceTimeStamp) {
+        value->hasSourceTimestamp = true;
+        value->sourceTimestamp = UA_DateTime_now();
+    }
+   return UA_STATUSCODE_GOOD;
+}
+
+static UA_StatusCode
+readRandomDoubleData (UA_Server *server,
+             const UA_NodeId *sessionId, void *sessionContext,
+             const UA_NodeId *nodeId, void *nodeContext,
+             UA_Boolean sourceTimeStamp,
+             const UA_NumericRange *range, UA_DataValue *value) {
+    if(range) {
+        value->hasStatus = true;
+        value->status = UA_STATUSCODE_BADINDEXRANGEINVALID;
+        return UA_STATUSCODE_GOOD;
+    }
+    UA_Double toggle = (UA_Double)UA_UInt32_random();
+    UA_Variant_setScalarCopy(&value->value, &toggle, &UA_TYPES[UA_TYPES_DOUBLE]);
+    value->hasValue = true;
+    if(sourceTimeStamp) {
+        value->hasSourceTimestamp = true;
+        value->sourceTimestamp = UA_DateTime_now();
+    }
+   return UA_STATUSCODE_GOOD;
+}
+static UA_StatusCode
+readByteString (UA_Server *server,
+             const UA_NodeId *sessionId, void *sessionContext,
+             const UA_NodeId *nodeId, void *nodeContext,
+             UA_Boolean sourceTimeStamp,
+             const UA_NumericRange *range, UA_DataValue *value) {
+    if(range) {
+        value->hasStatus = true;
+        value->status = UA_STATUSCODE_BADINDEXRANGEINVALID;
+        return UA_STATUSCODE_GOOD;
+    }
+    char randomName[8];
+    UA_snprintf(randomName, 8, "%d%d", UA_UInt32_random(), UA_UInt32_random());
+    UA_ByteString randomByte = UA_BYTESTRING(randomName);
+    UA_Variant_setScalarCopy(&value->value, &randomByte, &UA_TYPES[UA_TYPES_BYTESTRING]);
+    value->hasValue = true;
+    if(sourceTimeStamp) {
+        value->hasSourceTimestamp = true;
+        value->sourceTimestamp = UA_DateTime_now();
+    }
+   return UA_STATUSCODE_GOOD;
 }
 
 /* Method Node Example */
@@ -216,6 +452,7 @@ setInformationModel(UA_Server *server) {
 #define ARRAYID 50002
 #define MATRIXID 50003
 #define DEPTHID 50004
+#define SCALETESTID 40005
 
     UA_ObjectAttributes object_attr = UA_ObjectAttributes_default;
     object_attr.description = UA_LOCALIZEDTEXT("en-US", "Demo");
@@ -243,6 +480,12 @@ setInformationModel(UA_Server *server) {
     object_attr.displayName = UA_LOCALIZEDTEXT("en-US", "Matrix");
     UA_Server_addObjectNode(server, UA_NODEID_NUMERIC(1, MATRIXID), UA_NODEID_NUMERIC(1, DEMOID),
                             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES), UA_QUALIFIEDNAME(1, "Matrix"),
+                            UA_NODEID_NUMERIC(0, UA_NS0ID_FOLDERTYPE), object_attr, NULL, NULL);
+
+    object_attr.description = UA_LOCALIZEDTEXT("en-US", "ScaleTest");
+    object_attr.displayName = UA_LOCALIZEDTEXT("en-US", "ScaleTest");
+    UA_Server_addObjectNode(server, UA_NODEID_NUMERIC(1, SCALETESTID), UA_NODEID_NUMERIC(1, DEMOID),
+                            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES), UA_QUALIFIEDNAME(1, "ScaleTest"),
                             UA_NODEID_NUMERIC(0, UA_NS0ID_FOLDERTYPE), object_attr, NULL, NULL);
 
     /* Fill demo nodes for each type*/
@@ -352,6 +595,102 @@ setInformationModel(UA_Server *server) {
                                 UA_NODEID_NUMERIC(0, UA_NS0ID_FOLDERTYPE), object_attr, NULL, NULL);
     }
 
+    /* Scale Test: 100 nodes of each type */
+    int scale_i = 0;
+    UA_UInt32 scale_nodeid = 43000;
+    for(UA_UInt32 type = 0; type < 15; type++) {
+        if(type == UA_TYPES_SBYTE || type == UA_TYPES_BYTE
+                || type == UA_TYPES_GUID)
+            continue;
+
+        UA_DataSource scaleTestDataSource;
+        UA_VariableAttributes attr = UA_VariableAttributes_default;
+        attr.dataType = UA_TYPES[type].typeId;
+        attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
+        attr.writeMask = UA_WRITEMASK_DISPLAYNAME | UA_WRITEMASK_DESCRIPTION;
+        attr.userWriteMask = UA_WRITEMASK_DISPLAYNAME | UA_WRITEMASK_DESCRIPTION;
+        attr.valueRank = UA_VALUERANK_SCALAR;
+        switch(UA_TYPES[type].typeIndex) {
+            case UA_TYPES_BOOLEAN: {
+                scaleTestDataSource.read = readRandomBoolData;
+                scaleTestDataSource.write = NULL;
+                break;
+            }
+            case UA_TYPES_INT16: {
+                scaleTestDataSource.read = readRandomInt16Data;
+                scaleTestDataSource.write = NULL;
+                break;
+            }
+            case UA_TYPES_UINT16: {
+                scaleTestDataSource.read = readRandomUInt16Data;
+                scaleTestDataSource.write = NULL;
+                break;
+            }
+            case UA_TYPES_INT32: {
+                scaleTestDataSource.read = readRandomInt32Data;
+                scaleTestDataSource.write = NULL;
+                break;
+            }
+            case UA_TYPES_UINT32: {
+                scaleTestDataSource.read = readRandomUInt32Data;
+                scaleTestDataSource.write = NULL;
+                break;
+            }
+            case UA_TYPES_INT64: {
+                scaleTestDataSource.read = readRandomInt64Data;
+                scaleTestDataSource.write = NULL;
+                break;
+            }
+            case UA_TYPES_UINT64: {
+                scaleTestDataSource.read = readRandomUInt64Data;
+                scaleTestDataSource.write = NULL;
+                break;
+            }
+            case UA_TYPES_STRING: {
+                scaleTestDataSource.read = readRandomStringData;
+                scaleTestDataSource.write = NULL;
+                break;
+            }
+            case UA_TYPES_FLOAT: {
+                scaleTestDataSource.read = readRandomFloatData;
+                scaleTestDataSource.write = NULL;
+                break;
+            }
+            case UA_TYPES_DOUBLE: {
+                scaleTestDataSource.read = readRandomDoubleData;
+                scaleTestDataSource.write = NULL;
+                break;
+            }
+            case UA_TYPES_DATETIME:
+                scaleTestDataSource.read = readTimeData;
+                scaleTestDataSource.write = NULL;
+                break;
+            case UA_TYPES_BYTESTRING:
+                scaleTestDataSource.read = readByteString;
+                scaleTestDataSource.write = NULL;
+                break;
+            default:
+                break;
+        }
+
+        for(size_t j = 0; j < 100; j++) {
+            char name[32];
+#ifndef UA_ENABLE_TYPENAMES
+            UA_snprintf(name, 20, "%02d - %i", type, scale_i);
+#else
+            UA_snprintf(name, 20, "%s - %i", UA_TYPES[type].typeName, scale_i);
+#endif
+            attr.displayName = UA_LOCALIZEDTEXT("en-US", name);
+            UA_QualifiedName qualifiedName = UA_QUALIFIEDNAME(1, name);
+            UA_Server_addDataSourceVariableNode(server, UA_NODEID_NUMERIC(1, ++scale_nodeid),
+                                      UA_NODEID_NUMERIC(1, SCALETESTID),
+                                      UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),qualifiedName,
+                                      baseDataVariableType, attr, scaleTestDataSource, NULL, NULL);
+            scale_i++;
+        }
+        UA_Variant_clear(&attr.value);
+    }
+
     /* Add the variable to some more places to get a node with three inverse references for the CTT */
     UA_ExpandedNodeId answer_nodeid = UA_EXPANDEDNODEID_STRING(1, "the.answer");
     UA_Server_addReference(server, UA_NODEID_NUMERIC(1, DEMOID),
@@ -434,6 +773,151 @@ setInformationModel(UA_Server *server) {
 #endif
 }
 
+static void
+disableAnonymous(UA_ServerConfig *config) {
+    for(size_t i = 0; i < config->endpointsSize; i++) {
+        UA_EndpointDescription *ep = &config->endpoints[i];
+
+        for(size_t j = 0; j < ep->userIdentityTokensSize; j++) {
+            UA_UserTokenPolicy *utp = &ep->userIdentityTokens[j];
+            if(utp->tokenType != UA_USERTOKENTYPE_ANONYMOUS)
+                continue;
+
+            UA_UserTokenPolicy_clear(utp);
+            /* Move the last to this position */
+            if(j + 1 < ep->userIdentityTokensSize) {
+                ep->userIdentityTokens[j] = ep->userIdentityTokens[ep->userIdentityTokensSize-1];
+                j--;
+            }
+            ep->userIdentityTokensSize--;
+        }
+
+        /* Delete the entire array if the last UserTokenPolicy was removed */
+        if(ep->userIdentityTokensSize == 0) {
+            UA_free(ep->userIdentityTokens);
+            ep->userIdentityTokens = NULL;
+        }
+    }
+}
+
+#ifdef UA_ENABLE_ENCRYPTION
+static void
+disableUnencrypted(UA_ServerConfig *config) {
+    for(size_t i = 0; i < config->endpointsSize; i++) {
+        UA_EndpointDescription *ep = &config->endpoints[i];
+        if(ep->securityMode != UA_MESSAGESECURITYMODE_NONE)
+            continue;
+
+        UA_EndpointDescription_clear(ep);
+        /* Move the last to this position */
+        if(i + 1 < config->endpointsSize) {
+            config->endpoints[i] = config->endpoints[config->endpointsSize-1];
+            i--;
+        }
+        config->endpointsSize--;
+    }
+    /* Delete the entire array if the last Endpoint was removed */
+    if(config->endpointsSize== 0) {
+        UA_free(config->endpoints);
+        config->endpoints = NULL;
+    }
+}
+
+static void
+disableOutdatedSecurityPolicy(UA_ServerConfig *config) {
+    for(size_t i = 0; i < config->endpointsSize; i++) {
+        UA_EndpointDescription *ep = &config->endpoints[i];
+        UA_ByteString basic128uri = UA_BYTESTRING("http://opcfoundation.org/UA/SecurityPolicy#Basic128Rsa15");
+        if(!UA_String_equal(&ep->securityPolicyUri, &basic128uri))
+            continue;
+
+        UA_EndpointDescription_clear(ep);
+        /* Move the last to this position */
+        if(i + 1 < config->endpointsSize) {
+            config->endpoints[i] = config->endpoints[config->endpointsSize-1];
+            i--;
+        }
+        config->endpointsSize--;
+    }
+    /* Delete the entire array if the last Endpoint was removed */
+    if(config->endpointsSize== 0) {
+        UA_free(config->endpoints);
+        config->endpoints = NULL;
+    }
+}
+
+static void
+disableBasic128SecurityPolicy(UA_ServerConfig *config) {
+    for(size_t i = 0; i < config->endpointsSize; i++) {
+        UA_EndpointDescription *ep = &config->endpoints[i];
+        UA_ByteString basic128uri = UA_BYTESTRING("http://opcfoundation.org/UA/SecurityPolicy#Basic128Rsa15");
+        if(!UA_String_equal(&ep->securityPolicyUri, &basic128uri))
+            continue;
+
+        UA_EndpointDescription_clear(ep);
+        /* Move the last to this position */
+        if(i + 1 < config->endpointsSize) {
+            config->endpoints[i] = config->endpoints[config->endpointsSize-1];
+            i--;
+        }
+        config->endpointsSize--;
+    }
+    /* Delete the entire array if the last Endpoint was removed */
+    if(config->endpointsSize== 0) {
+        UA_free(config->endpoints);
+        config->endpoints = NULL;
+    }
+}
+
+static void
+disableBasic256SecurityPolicy(UA_ServerConfig *config) {
+    for(size_t i = 0; i < config->endpointsSize; i++) {
+        UA_EndpointDescription *ep = &config->endpoints[i];
+        UA_ByteString basic256uri = UA_BYTESTRING("http://opcfoundation.org/UA/SecurityPolicy#Basic256");
+        if(!UA_String_equal(&ep->securityPolicyUri, &basic256uri))
+            continue;
+
+        UA_EndpointDescription_clear(ep);
+        /* Move the last to this position */
+        if(i + 1 < config->endpointsSize) {
+            config->endpoints[i] = config->endpoints[config->endpointsSize-1];
+            i--;
+        }
+        config->endpointsSize--;
+    }
+    /* Delete the entire array if the last Endpoint was removed */
+    if(config->endpointsSize== 0) {
+        UA_free(config->endpoints);
+        config->endpoints = NULL;
+    }
+}
+
+
+static void
+disableBasic256Sha256SecurityPolicy(UA_ServerConfig *config) {
+    for(size_t i = 0; i < config->endpointsSize; i++) {
+        UA_EndpointDescription *ep = &config->endpoints[i];
+        UA_ByteString basic256sha256uri = UA_BYTESTRING("http://opcfoundation.org/UA/SecurityPolicy#Basic256Sha256");
+        if(!UA_String_equal(&ep->securityPolicyUri, &basic256sha256uri))
+            continue;
+
+        UA_EndpointDescription_clear(ep);
+        /* Move the last to this position */
+        if(i + 1 < config->endpointsSize) {
+            config->endpoints[i] = config->endpoints[config->endpointsSize-1];
+            i--;
+        }
+        config->endpointsSize--;
+    }
+    /* Delete the entire array if the last Endpoint was removed */
+    if(config->endpointsSize== 0) {
+        UA_free(config->endpoints);
+        config->endpoints = NULL;
+    }
+}
+
+#endif
+
 UA_Boolean running = true;
 
 static void
@@ -446,10 +930,21 @@ static void
 usage(void) {
     UA_LOG_WARNING(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
                    "Usage:\n"
+#ifndef UA_ENABLE_ENCRYPTION
+                   "server_ctt [<server-certificate.der>]\n"
+#else
                    "server_ctt <server-certificate.der> <private-key.der>\n"
-                   "[--trustlist <tl1.ctl> <tl2.ctl> ... ]\n"
-                   "[--issuerlist <il1.der> <il2.der> ... ]\n"
-                   "[--revocationlist <rv1.crl> <rv2.crl> ...]\n");
+                   "\t[--trustlist <tl1.ctl> <tl2.ctl> ... ]\n"
+                   "\t[--issuerlist <il1.der> <il2.der> ... ]\n"
+                   "\t[--revocationlist <rv1.crl> <rv2.crl> ...]\n"
+                   "\t[--enableUnencrypted]\n"
+                   "\t[--enableOutdatedSecurityPolicy]\n"
+                   "\t[--enableTimestampCheck]\n"
+                   "\t[--disableBasic128]\n"
+                   "\t[--disableBasic256]\n"
+                   "\t[--disableBasic256Sha256]\n"
+#endif
+                   "\t[--enableAnonymous]\n");
 }
 
 int main(int argc, char **argv) {
@@ -464,134 +959,224 @@ int main(int argc, char **argv) {
         }
     }
 
-    UA_Server *server = UA_Server_new();
-    if(server == NULL)
-        return EXIT_FAILURE;
-    UA_ServerConfig *config = UA_Server_getConfig(server);
+    UA_ServerConfig config;
+    memset(&config, 0, sizeof(UA_ServerConfig));
 
-#ifdef UA_ENABLE_ENCRYPTION
-    if(argc < 3) {
-        usage();
-        UA_ServerConfig_setDefault(config);
-    } else {
-        /* Load certificate and private key */
-        UA_ByteString certificate = loadFile(argv[1]);
+    /* Load certificate */
+    size_t pos = 1;
+    UA_ByteString certificate = UA_BYTESTRING_NULL;
+    if((size_t)argc >= pos + 1) {
+        certificate = loadFile(argv[1]);
         if(certificate.length == 0) {
             UA_LOG_FATAL(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
-                           "Unable to load file %s.", argv[1]);
+                           "Unable to load file %s.", argv[pos]);
             return EXIT_FAILURE;
         }
-        UA_ByteString privateKey = loadFile(argv[2]);
+        pos++;
+    }
+
+#ifdef UA_ENABLE_ENCRYPTION
+    /* Load the private key */
+    UA_ByteString privateKey = UA_BYTESTRING_NULL;
+    if((size_t)argc >= pos + 1) {
+        privateKey = loadFile(argv[2]);
         if(privateKey.length == 0) {
             UA_LOG_FATAL(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
-                           "Unable to load file %s.", argv[2]);
+                           "Unable to load file %s.", argv[pos]);
             return EXIT_FAILURE;
         }
-
-        UA_ByteString trustList[100];
-        size_t trustListSize = 0;
-        UA_ByteString issuerList[100];
-        size_t issuerListSize = 0;
-        UA_ByteString revocationList[100];
-        size_t revocationListSize = 0;
-        char filetype = ' '; /* t==trustlist, l == issuerList, r==revocationlist */
-        for(int i = 3; i < argc; i++) {
-            if(strcmp(argv[i], "--trustlist") == 0) {
-                filetype = 't';
-                continue;
-            }
-
-            if(strcmp(argv[i], "--issuerlist") == 0) {
-                filetype = 'l';
-                continue;
-            }
-
-            if(strcmp(argv[i], "--revocationlist") == 0) {
-                filetype = 'r';
-                continue;
-            }
-
-            if(filetype == 't') {
-                if(trustListSize >= 100) {
-                    UA_LOG_FATAL(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
-                                 "Too many trust lists");
-                    return EXIT_FAILURE;
-                }
-                trustList[trustListSize] = loadFile(argv[i]);
-                if(trustList[trustListSize].data == NULL) {
-                    UA_LOG_FATAL(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
-                                 "Unable to load trust list %s", argv[i]);
-                    return EXIT_FAILURE;
-                }
-                trustListSize++;
-                continue;
-            }
-
-            if(filetype == 'l') {
-                if(issuerListSize >= 100) {
-                    UA_LOG_FATAL(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
-                                 "Too many trust lists");
-                    return EXIT_FAILURE;
-                }
-                issuerList[issuerListSize] = loadFile(argv[i]);
-                if(issuerList[issuerListSize].data == NULL) {
-                    UA_LOG_FATAL(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
-                                 "Unable to load trust list %s", argv[i]);
-                    return EXIT_FAILURE;
-                }
-                issuerListSize++;
-                continue;
-            }
-
-            if(filetype == 'r') {
-                if(revocationListSize >= 100) {
-                    UA_LOG_FATAL(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
-                                 "Too many revocation lists");
-                    return EXIT_FAILURE;
-                }
-                if(revocationList[revocationListSize].data == NULL) {
-                    UA_LOG_FATAL(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
-                                 "Unable to load revocationlist %s", argv[i]);
-                    return EXIT_FAILURE;
-                }
-                revocationList[revocationListSize] = loadFile(argv[i]);
-                revocationListSize++;
-                continue;
-            }
-
-            usage();
-            return EXIT_FAILURE;
-        }
-
-        UA_ServerConfig_setDefaultWithSecurityPolicies(config, 4840,
-                                                       &certificate, &privateKey,
-                                                       trustList, trustListSize,
-                                                       issuerList, issuerListSize,
-                                                       revocationList, revocationListSize);
-
-        UA_ByteString_clear(&certificate);
-        UA_ByteString_clear(&privateKey);
-        for(size_t i = 0; i < trustListSize; i++)
-            UA_ByteString_clear(&trustList[i]);
-        for(size_t i = 0; i < issuerListSize; i++)
-            UA_ByteString_clear(&issuerList[i]);
-        for(size_t i = 0; i < revocationListSize; i++)
-            UA_ByteString_clear(&revocationList[i]);
+        pos++;
     }
+
+    UA_ByteString trustList[100];
+    size_t trustListSize = 0;
+    UA_ByteString issuerList[100];
+    size_t issuerListSize = 0;
+    UA_ByteString revocationList[100];
+    size_t revocationListSize = 0;
+    char filetype = ' '; /* t==trustlist, l == issuerList, r==revocationlist */
+    UA_Boolean enableUnencr = false;
+    UA_Boolean enableSec = false;
+    UA_Boolean enableTime = false;
+    UA_Boolean disableBasic128 = false;
+    UA_Boolean disableBasic256 = false;
+    UA_Boolean disableBasic256Sha256 = false;
+
+#endif
+
+    UA_Boolean enableAnon = false;
+
+    /* Loop over the remaining arguments */
+    for(; pos < (size_t)argc; pos++) {
+
+        if(strcmp(argv[pos], "--enableAnonymous") == 0) {
+            enableAnon = true;
+            continue;
+        }
+
+#ifdef UA_ENABLE_ENCRYPTION
+        if(strcmp(argv[pos], "--enableUnencrypted") == 0) {
+            enableUnencr = true;
+            continue;
+        }
+
+        if(strcmp(argv[pos], "--enableOutdatedSecurityPolicy") == 0) {
+            enableSec = true;
+            continue;
+        }
+
+        if(strcmp(argv[pos], "--enableTimestampCheck") == 0) {
+            enableTime = true;
+            continue;
+        }
+
+        if(strcmp(argv[pos], "--disableBasic128") == 0) {
+            disableBasic128 = true;
+            continue;
+        }
+
+        if(strcmp(argv[pos], "--disableBasic256") == 0) {
+            disableBasic256 = true;
+            continue;
+        }
+
+        if(strcmp(argv[pos], "--disableBasic256Sha256") == 0) {
+            disableBasic256Sha256 = true;
+            continue;
+        }
+
+        if(strcmp(argv[pos], "--trustlist") == 0) {
+            filetype = 't';
+            continue;
+        }
+
+        if(strcmp(argv[pos], "--issuerlist") == 0) {
+            filetype = 'l';
+            continue;
+        }
+
+        if(strcmp(argv[pos], "--revocationlist") == 0) {
+            filetype = 'r';
+            continue;
+        }
+
+        if(filetype == 't') {
+            if(trustListSize >= 100) {
+                UA_LOG_FATAL(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
+                             "Too many trust lists");
+                return EXIT_FAILURE;
+            }
+            trustList[trustListSize] = loadFile(argv[pos]);
+            if(trustList[trustListSize].data == NULL) {
+                UA_LOG_FATAL(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
+                             "Unable to load trust list %s", argv[pos]);
+                return EXIT_FAILURE;
+            }
+            trustListSize++;
+            continue;
+        }
+
+        if(filetype == 'l') {
+            if(issuerListSize >= 100) {
+                UA_LOG_FATAL(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
+                             "Too many trust lists");
+                return EXIT_FAILURE;
+            }
+            issuerList[issuerListSize] = loadFile(argv[pos]);
+            if(issuerList[issuerListSize].data == NULL) {
+                UA_LOG_FATAL(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
+                             "Unable to load trust list %s", argv[pos]);
+                return EXIT_FAILURE;
+            }
+            issuerListSize++;
+            continue;
+        }
+
+        if(filetype == 'r') {
+            if(revocationListSize >= 100) {
+                UA_LOG_FATAL(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
+                             "Too many revocation lists");
+                return EXIT_FAILURE;
+            }
+            revocationList[revocationListSize] = loadFile(argv[pos]);
+            if(revocationList[revocationListSize].data == NULL) {
+                UA_LOG_FATAL(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
+                             "Unable to load revocationlist %s", argv[pos]);
+                return EXIT_FAILURE;
+            }
+            revocationListSize++;
+            continue;
+        }
+#endif
+
+        usage();
+        return EXIT_FAILURE;
+    }
+
+#ifdef UA_ENABLE_ENCRYPTION
+    UA_ServerConfig_setDefaultWithSecurityPolicies(&config, 4840,
+                                                   &certificate, &privateKey,
+                                                   trustList, trustListSize,
+                                                   issuerList, issuerListSize,
+                                                   revocationList, revocationListSize);
+    if(!enableUnencr)
+        disableUnencrypted(&config);
+    if(!enableSec)
+        disableOutdatedSecurityPolicy(&config);
+
+    if(disableBasic128)
+        disableBasic128SecurityPolicy(&config);
+    if(disableBasic256)
+        disableBasic256SecurityPolicy(&config);
+    if(disableBasic256Sha256)
+        disableBasic256Sha256SecurityPolicy(&config);
+
+    /* Set operation limits */
+    config.maxNodesPerRead = MAX_OPERATION_LIMIT;
+    config.maxNodesPerWrite = MAX_OPERATION_LIMIT;
+    config.maxNodesPerMethodCall = MAX_OPERATION_LIMIT;
+    config.maxNodesPerBrowse = MAX_OPERATION_LIMIT;
+    config.maxNodesPerRegisterNodes = MAX_OPERATION_LIMIT;
+    config.maxNodesPerTranslateBrowsePathsToNodeIds = MAX_OPERATION_LIMIT;
+    config.maxNodesPerNodeManagement = MAX_OPERATION_LIMIT;
+    config.maxMonitoredItemsPerCall = MAX_OPERATION_LIMIT;
+
+    /* If RequestTimestamp is '0', log the warning and proceed */
+    config.verifyRequestTimestamp = UA_RULEHANDLING_WARN;
+
+    if(enableTime)
+        config.verifyRequestTimestamp = UA_RULEHANDLING_DEFAULT;
+
 #else
-    UA_ByteString certificate = UA_BYTESTRING_NULL;
-    if(argc < 2) {
-        UA_LOG_WARNING(UA_Log_Stdout, UA_LOGCATEGORY_USERLAND,
-                       "Missing argument for the server certificate");
-    } else {
-        certificate = loadFile(argv[1]);
-    }
-    UA_ServerConfig_setDefault(config);
+    UA_ServerConfig_setMinimal(&config, 4840, &certificate);
+#endif
+
+    if(!enableAnon)
+        disableAnonymous(&config);
+
+    /* Clean up temp values */
     UA_ByteString_clear(&certificate);
+#ifdef UA_ENABLE_ENCRYPTION
+    UA_ByteString_clear(&privateKey);
+    for(size_t i = 0; i < trustListSize; i++)
+        UA_ByteString_clear(&trustList[i]);
+    for(size_t i = 0; i < issuerListSize; i++)
+        UA_ByteString_clear(&issuerList[i]);
+    for(size_t i = 0; i < revocationListSize; i++)
+        UA_ByteString_clear(&revocationList[i]);
 #endif
 
     /* Override with a custom access control policy */
-    config->accessControl.getUserAccessLevel = getUserAccessLevel_disallowSpecific;
+    config.accessControl.getUserAccessLevel = getUserAccessLevel_disallowSpecific;
+    UA_String_clear(&config.applicationDescription.applicationUri);
+    config.applicationDescription.applicationUri =
+        UA_String_fromChars("urn:open62541.server.application");
+
+    config.shutdownDelay = 5000.0; /* 5s */
+
+    UA_Server *server = UA_Server_newWithConfig(&config);
+    if(server == NULL)
+        return EXIT_FAILURE;
 
     setInformationModel(server);
 

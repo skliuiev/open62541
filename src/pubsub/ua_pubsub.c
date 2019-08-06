@@ -7,7 +7,6 @@
  * Copyright (c) 2019 Kalycito Infotech Private Limited
  */
 
-#include <open62541/server_config_default.h>
 #include "server/ua_server_internal.h"
 
 #ifdef UA_ENABLE_PUBSUB /* conditional compilation */
@@ -26,8 +25,6 @@
 #define UA_MAX_SIZENAME 64  /* Max size of Qualified Name of Subscribed Variable */
 
 /* Forward declaration */
-static size_t
-iterateVariableAttrDimension(UA_VariableAttributes varAttr);
 static void
 UA_WriterGroup_deleteMembers(UA_Server *server, UA_WriterGroup *writerGroup);
 static void
@@ -271,6 +268,8 @@ UA_Server_removeReaderGroup(UA_Server *server, UA_NodeId groupIdentifier) {
         return UA_STATUSCODE_BADNOTFOUND;
     }
 
+    /* Unregister subscribe callback */
+    UA_PubSubManager_removeRepeatedPubSubCallback(server, readerGroup->subscribeCallbackId);
 #ifdef UA_ENABLE_PUBSUB_INFORMATIONMODEL
     /* To Do:RemoveGroupRepresentation(server, &readerGroup->identifier) */
 #endif
@@ -468,21 +467,6 @@ UA_Server_processNetworkMessage(UA_Server *server, UA_NetworkMessage *pMsg,
      * else condition for dataSetWriterIdAvailable and writerGroupIdAvailable) */
 
     return UA_STATUSCODE_GOOD;
-}
-
-/**
- * Find size iterator - array dimension for VariableAttributes
- *
- * @param VariableAttributes
- * @return global variable size iterator
- */
-static size_t
-iterateVariableAttrDimension (UA_VariableAttributes varAttr) {
-    size_t sizeIterator = 0;
-    for(size_t indexIterator = 0; indexIterator < varAttr.arrayDimensionsSize; indexIterator++) {
-        sizeIterator += varAttr.arrayDimensions[indexIterator];
-    }
-    return sizeIterator;
 }
 
 /**
@@ -712,285 +696,21 @@ UA_StatusCode UA_Server_DataSetReader_addTargetVariables(UA_Server *server, UA_N
         return UA_STATUSCODE_BADINVALIDARGUMENT;
     }
 
-    /* To Do Declare for all other type */
-    UA_DateTime dateTimeTypeVal = 0;
     UA_TargetVariablesDataType targetVars;
     targetVars.targetVariablesSize = pDataSetReader->config.dataSetMetaData.fieldsSize;
     targetVars.targetVariables = (UA_FieldTargetDataType *)UA_calloc(targetVars.targetVariablesSize, sizeof(UA_FieldTargetDataType));
-    UA_StatusCode retVal = UA_STATUSCODE_GOOD;
     for (size_t iteratorField = 0; iteratorField < pDataSetReader->config.dataSetMetaData.fieldsSize; iteratorField++) {
         UA_VariableAttributes vAttr = UA_VariableAttributes_default;
         vAttr.valueRank = pDataSetReader->config.dataSetMetaData.fields[iteratorField].valueRank;
         if(pDataSetReader->config.dataSetMetaData.fields[iteratorField].arrayDimensionsSize > 0) {
-            retVal = UA_Array_copy(pDataSetReader->config.dataSetMetaData.fields[iteratorField].arrayDimensions, pDataSetReader->config.dataSetMetaData.fields[iteratorField].arrayDimensionsSize, (void**)&vAttr.arrayDimensions, &UA_TYPES[UA_TYPES_UINT32]);
-            if(retVal == UA_STATUSCODE_GOOD) {
+            retval = UA_Array_copy(pDataSetReader->config.dataSetMetaData.fields[iteratorField].arrayDimensions, pDataSetReader->config.dataSetMetaData.fields[iteratorField].arrayDimensionsSize, (void**)&vAttr.arrayDimensions, &UA_TYPES[UA_TYPES_UINT32]);
+            if(retval == UA_STATUSCODE_GOOD) {
                 vAttr.arrayDimensionsSize = pDataSetReader->config.dataSetMetaData.fields[iteratorField].arrayDimensionsSize;
             }
 
         }
 
-        switch (pDataSetReader->config.dataSetMetaData.fields[iteratorField].builtInType) {
-            case UA_NS0ID_BOOLEAN:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_Boolean *boolArray = (UA_Boolean*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_BOOLEAN]);
-                    UA_Variant_setArrayCopy(&vAttr.value, boolArray, sizeIterator, &UA_TYPES[UA_TYPES_BOOLEAN]);
-                    UA_Array_delete(boolArray, sizeIterator, &UA_TYPES[UA_TYPES_BOOLEAN]);
-                }
-                else {
-                    UA_Boolean boolTypeVal = false;
-                    UA_Variant_setScalar(&vAttr.value, &boolTypeVal, &UA_TYPES[UA_TYPES_BOOLEAN]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-            break;
-
-            case UA_NS0ID_SBYTE:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-
-                    UA_SByte *sbyteArray = (UA_SByte*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_SBYTE]);
-                    UA_Variant_setArrayCopy(&vAttr.value, sbyteArray, sizeIterator, &UA_TYPES[UA_TYPES_SBYTE]);
-                    UA_Array_delete(sbyteArray, sizeIterator, &UA_TYPES[UA_TYPES_SBYTE]);
-                }
-                else {
-                    UA_SByte sbyteTypeVal = 0;
-                    UA_Variant_setScalar(&vAttr.value, &sbyteTypeVal, &UA_TYPES[UA_TYPES_SBYTE]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            case UA_NS0ID_BYTE:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_Byte *byteArray = (UA_Byte*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_BYTE]);
-                    UA_Variant_setArrayCopy(&vAttr.value, byteArray, sizeIterator, &UA_TYPES[UA_TYPES_BYTE]);
-                    UA_Array_delete(byteArray, sizeIterator, &UA_TYPES[UA_TYPES_BYTE]);
-                }
-                else {
-                    UA_Byte byteTypeVal = 0;
-                    UA_Variant_setScalar(&vAttr.value, &byteTypeVal, &UA_TYPES[UA_TYPES_BYTE]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            case UA_NS0ID_INT16:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_Int16 *int16Array = (UA_Int16*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_INT16]);
-                    UA_Variant_setArrayCopy(&vAttr.value, int16Array, sizeIterator, &UA_TYPES[UA_TYPES_INT16]);
-                    UA_Array_delete(int16Array, sizeIterator, &UA_TYPES[UA_TYPES_INT16]);
-                }
-                else {
-                    UA_Int16 int16TypeVal = 0;
-                    UA_Variant_setScalar(&vAttr.value, &int16TypeVal, &UA_TYPES[UA_TYPES_INT16]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            case UA_NS0ID_UINT16:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_UInt16 *uint16Array = (UA_UInt16*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_UINT16]);
-                    UA_Variant_setArrayCopy(&vAttr.value, uint16Array, sizeIterator, &UA_TYPES[UA_TYPES_UINT16]);
-                    UA_Array_delete(uint16Array, sizeIterator, &UA_TYPES[UA_TYPES_UINT16]);
-                }
-                else {
-                    UA_UInt16 uint16TypeVal = 0;
-                    UA_Variant_setScalar(&vAttr.value, &uint16TypeVal, &UA_TYPES[UA_TYPES_UINT16]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            case UA_NS0ID_INT32:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_Int32 *int32Array = (UA_Int32*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_INT32]);
-                    UA_Variant_setArrayCopy(&vAttr.value, int32Array, sizeIterator, &UA_TYPES[UA_TYPES_INT32]);
-                    UA_Array_delete(int32Array, sizeIterator, &UA_TYPES[UA_TYPES_INT32]);
-                }
-                else {
-                    UA_Int32 int32TypeVal = 0;
-                    UA_Variant_setScalar(&vAttr.value, &int32TypeVal, &UA_TYPES[UA_TYPES_INT32]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            case UA_NS0ID_UINT32:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_UInt32 *uint32Array = (UA_UInt32*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_UINT32]);
-                    UA_Variant_setArrayCopy(&vAttr.value, uint32Array, sizeIterator, &UA_TYPES[UA_TYPES_UINT32]);
-                    UA_Array_delete(uint32Array, sizeIterator, &UA_TYPES[UA_TYPES_UINT32]);
-                }
-                else {
-                    UA_UInt32 uint32TypeVal = 0;
-                    UA_Variant_setScalar(&vAttr.value, &uint32TypeVal, &UA_TYPES[UA_TYPES_UINT32]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            case UA_NS0ID_INT64:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_Int64 *int64Array = (UA_Int64*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_INT64]);
-                    UA_Variant_setArrayCopy(&vAttr.value, int64Array, sizeIterator, &UA_TYPES[UA_TYPES_INT64]);
-                    UA_Array_delete(int64Array, sizeIterator, &UA_TYPES[UA_TYPES_INT64]);
-                }
-                else {
-                    UA_Int64 int64TypeVal = 0;
-                    UA_Variant_setScalar(&vAttr.value, &int64TypeVal, &UA_TYPES[UA_TYPES_INT64]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            case UA_NS0ID_UINT64:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_UInt64 *uint64Array = (UA_UInt64*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_UINT64]);
-                    UA_Variant_setArrayCopy(&vAttr.value, uint64Array, sizeIterator, &UA_TYPES[UA_TYPES_UINT64]);
-                    UA_Array_delete(uint64Array, sizeIterator, &UA_TYPES[UA_TYPES_UINT64]);
-                }
-                else {
-                    UA_UInt64 uint64TypeVal = 0;
-                    UA_Variant_setScalar(&vAttr.value, &uint64TypeVal, &UA_TYPES[UA_TYPES_UINT64]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            case UA_NS0ID_FLOAT:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_Float *floatArray = (UA_Float*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_FLOAT]);
-                    UA_Variant_setArrayCopy(&vAttr.value, floatArray, sizeIterator, &UA_TYPES[UA_TYPES_FLOAT]);
-                    UA_Array_delete(floatArray, sizeIterator, &UA_TYPES[UA_TYPES_FLOAT]);
-                }
-                else {
-                    UA_Float floatTypeVal = 0;
-                    UA_Variant_setScalar(&vAttr.value, &floatTypeVal, &UA_TYPES[UA_TYPES_FLOAT]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            case UA_NS0ID_DOUBLE:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_Double *doubleArray = (UA_Double*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_DOUBLE]);
-                    UA_Variant_setArrayCopy(&vAttr.value, doubleArray, sizeIterator, &UA_TYPES[UA_TYPES_DOUBLE]);
-                    UA_Array_delete(doubleArray, sizeIterator, &UA_TYPES[UA_TYPES_DOUBLE]);
-                }
-                else {
-                    UA_Double doubleTypeVal = 0.0;
-                    UA_Variant_setScalar(&vAttr.value, &doubleTypeVal, &UA_TYPES[UA_TYPES_DOUBLE]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            case UA_NS0ID_STRING:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_String *stringArray = (UA_String*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_STRING]);
-                    UA_Variant_setArrayCopy(&vAttr.value, stringArray, sizeIterator, &UA_TYPES[UA_TYPES_STRING]);
-                    UA_Array_delete(stringArray, sizeIterator, &UA_TYPES[UA_TYPES_STRING]);
-                }
-                else {
-                    UA_String stringTypeVal = UA_STRING_NULL;
-                    UA_Variant_setScalar(&vAttr.value, &stringTypeVal, &UA_TYPES[UA_TYPES_STRING]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            case UA_NS0ID_DATETIME:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_DateTime *dateTimeArray = (UA_DateTime*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_DATETIME]);
-                    UA_Variant_setArrayCopy(&vAttr.value, dateTimeArray, sizeIterator, &UA_TYPES[UA_TYPES_DATETIME]);
-                    UA_Array_delete(dateTimeArray, sizeIterator, &UA_TYPES[UA_TYPES_DATETIME]);
-                }
-                else {
-                    dateTimeTypeVal = 0;
-                    UA_Variant_setScalar(&vAttr.value, &dateTimeTypeVal, &UA_TYPES[UA_TYPES_DATETIME]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            case UA_NS0ID_GUID:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_Guid *guidArray = (UA_Guid*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_GUID]);
-                    UA_Variant_setArrayCopy(&vAttr.value, guidArray, sizeIterator, &UA_TYPES[UA_TYPES_GUID]);
-                    UA_Array_delete(guidArray, sizeIterator, &UA_TYPES[UA_TYPES_GUID]);
-                }
-                else {
-                    UA_Guid guidTypeVal = UA_GUID_NULL;
-                    UA_Variant_setScalar(&vAttr.value, &guidTypeVal, &UA_TYPES[UA_TYPES_GUID]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            case UA_NS0ID_NODEID:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_NodeId *nodeidArray = (UA_NodeId*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_NODEID]);
-                    UA_Variant_setArrayCopy(&vAttr.value, nodeidArray, sizeIterator, &UA_TYPES[UA_TYPES_NODEID]);
-                    UA_Array_delete(nodeidArray, sizeIterator, &UA_TYPES[UA_TYPES_NODEID]);
-                }
-                else {
-                    UA_NodeId nodeidTypeVal = UA_NODEID_NULL;
-                    UA_Variant_setScalar(&vAttr.value, &nodeidTypeVal, &UA_TYPES[UA_TYPES_NODEID]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            case UA_NS0ID_BYTESTRING:
-                if(vAttr.arrayDimensionsSize > 0) {
-                    size_t sizeIterator = iterateVariableAttrDimension(vAttr);
-                    UA_ByteString *byteStringArray = (UA_ByteString*)UA_Array_new(sizeIterator, &UA_TYPES[UA_TYPES_BYTESTRING]);
-                    UA_Variant_setArrayCopy(&vAttr.value, byteStringArray, sizeIterator, &UA_TYPES[UA_TYPES_BYTESTRING]);
-                    UA_Array_delete(byteStringArray, sizeIterator, &UA_TYPES[UA_TYPES_BYTESTRING]);
-                }
-                else {
-                    UA_ByteString byteStringTypeVal = UA_BYTESTRING_NULL;
-                    UA_Variant_setScalar(&vAttr.value, &byteStringTypeVal, &UA_TYPES[UA_TYPES_BYTESTRING]);
-                }
-
-                UA_NodeId_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType, &vAttr.dataType);
-
-            break;
-
-            default:
-                /* Type not supported */
-                UA_LOG_INFO(&server->config.logger, UA_LOGCATEGORY_USERLAND, "Type %u not supported, create empty variable.", pDataSetReader->config.dataSetMetaData.fields[iteratorField].builtInType);
-            break;
-        }
+        vAttr.dataType = pDataSetReader->config.dataSetMetaData.fields[iteratorField].dataType;
 
         vAttr.accessLevel = UA_ACCESSLEVELMASK_READ;
         UA_LocalizedText_copy(&pDataSetReader->config.dataSetMetaData.fields[iteratorField].description, &vAttr.description);
@@ -1017,15 +737,14 @@ UA_StatusCode UA_Server_DataSetReader_addTargetVariables(UA_Server *server, UA_N
 
         /* Add variable to the given parent node */
         UA_NodeId newNode;
-        retVal = UA_Server_addVariableNode(server, UA_NODEID_NULL, *parentNode,
+        retval = UA_Server_addVariableNode(server, UA_NODEID_NULL, *parentNode,
                                        UA_NODEID_NUMERIC(0, UA_NS0ID_HASCOMPONENT), qn,
                                        UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE), vAttr, NULL, &newNode);
-        if(retVal == UA_STATUSCODE_GOOD) {
+        if(retval == UA_STATUSCODE_GOOD) {
             UA_LOG_INFO(&server->config.logger, UA_LOGCATEGORY_USERLAND, "addVariableNode %s succeeded", szTmpName);
         }
         else {
-            retval = retVal;
-            UA_LOG_WARNING(&server->config.logger, UA_LOGCATEGORY_USERLAND, "addVariableNode: error 0x%x", retVal);
+            UA_LOG_WARNING(&server->config.logger, UA_LOGCATEGORY_USERLAND, "addVariableNode: error 0x%x", retval);
         }
 
         UA_FieldTargetDataType_init(&targetVars.targetVariables[iteratorField]);
@@ -1033,7 +752,6 @@ UA_StatusCode UA_Server_DataSetReader_addTargetVariables(UA_Server *server, UA_N
         UA_NodeId_copy(&newNode, &targetVars.targetVariables[iteratorField].targetNodeId);
         UA_NodeId_deleteMembers(&newNode);
         if(vAttr.arrayDimensionsSize > 0) {
-            UA_Variant_deleteMembers(&vAttr.value);
             UA_Array_delete(vAttr.arrayDimensions, vAttr.arrayDimensionsSize, &UA_TYPES[UA_TYPES_UINT32]);
         }
     }
@@ -1490,11 +1208,19 @@ UA_Server_updateWriterGroupConfig(UA_Server *server, UA_NodeId writerGroupIdenti
         return UA_STATUSCODE_BADNOTFOUND;
     //The update functionality will be extended during the next PubSub batches.
     //Currently is only a change of the publishing interval possible.
+    if(currentWriterGroup->config.maxEncapsulatedDataSetMessageCount != config->maxEncapsulatedDataSetMessageCount){
+        currentWriterGroup->config.maxEncapsulatedDataSetMessageCount = config->maxEncapsulatedDataSetMessageCount;
+        if(currentWriterGroup->config.messageSettings.encoding == UA_EXTENSIONOBJECT_ENCODED_NOBODY) {
+            UA_LOG_WARNING(&server->config.logger, UA_LOGCATEGORY_SERVER,
+                           "MaxEncapsulatedDataSetMessag need enabled 'PayloadHeader' within the message settings.");
+        }
+    }
     if(currentWriterGroup->config.publishingInterval != config->publishingInterval) {
         UA_PubSubManager_removeRepeatedPubSubCallback(server, currentWriterGroup->publishCallbackId);
         currentWriterGroup->config.publishingInterval = config->publishingInterval;
         UA_WriterGroup_addPublishCallback(server, currentWriterGroup);
-    } else if(currentWriterGroup->config.priority != config->priority) {
+    }
+    if(currentWriterGroup->config.priority != config->priority) {
         UA_LOG_WARNING(&server->config.logger, UA_LOGCATEGORY_SERVER,
                        "No or unsupported WriterGroup update.");
     }
@@ -2329,7 +2055,7 @@ UA_WriterGroup_publishCallback(UA_Server *server, UA_WriterGroup *writerGroup) {
     size_t nmCount = (dsmCount / maxDSM) + ((dsmCount % maxDSM) == 0 ? 0 : 1);
     for(UA_UInt32 i = 0; i < nmCount; i++) {
         UA_Byte nmDsmCount = maxDSM;
-        if(i == nmCount - 1)
+        if(i == nmCount - 1  && (dsmCount % maxDSM))
             nmDsmCount = (UA_Byte)dsmCount % maxDSM;
 
         UA_StatusCode res3 = UA_STATUSCODE_GOOD;

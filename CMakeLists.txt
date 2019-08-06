@@ -32,8 +32,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # Version #
 ###########
 
-set(OPEN62541_VER_MAJOR 0)
-set(OPEN62541_VER_MINOR 4)
+set(OPEN62541_VER_MAJOR 1)
+set(OPEN62541_VER_MINOR 0)
 set(OPEN62541_VER_PATCH 0)
 set(OPEN62541_VER_LABEL "-dev") # Appended to the X.Y.Z version format. For example "-rc1" or an empty string
 
@@ -113,7 +113,13 @@ set(ua_architecture_headers ${ua_architecture_headers}
     ${PROJECT_SOURCE_DIR}/include/open62541/architecture_functions.h
 )
 
+if(UA_ENABLE_WEBSOCKET_SERVER)
+    set(ua_architecture_sources ${ua_architecture_sources}
+                                ${PROJECT_SOURCE_DIR}/arch/network_ws.c)
 
+    set(ua_architecture_headers ${ua_architecture_headers}
+                                ${PROJECT_SOURCE_DIR}/include/open62541/network_ws.h)
+endif()
 
 if(${UA_ARCHITECTURE} STREQUAL "None")
   message(FATAL_ERROR "No architecture was selected. Please select the architecture of your target platform")
@@ -141,7 +147,9 @@ option(UA_ENABLE_DISCOVERY_MULTICAST "Enable Discovery Service with multicast su
 option(UA_ENABLE_QUERY "Enable query support." OFF)
 option(UA_ENABLE_COVERAGE "Enable gcov coverage" OFF)
 option(UA_ENABLE_ENCRYPTION "Enable encryption support (uses mbedTLS)" OFF)
+option(UA_ENABLE_MICRO_EMB_DEV_PROFILE "Builds CTT Compliant Micro Embedded Device Server Profile" OFF)
 option(BUILD_SHARED_LIBS "Enable building of shared libraries (dll/so)" OFF)
+option(UA_ENABLE_WEBSOCKET_SERVER "Enable websocket support (uses libwebsockets)" OFF)
 
 # Namespace Zero
 set(UA_NAMESPACE_ZERO "REDUCED" CACHE STRING "Completeness of the generated namespace zero (minimal/reduced/full)")
@@ -156,6 +164,12 @@ if(MSVC AND UA_NAMESPACE_ZERO STREQUAL "FULL")
     # For the full NS0 we need a stack size of 8MB (as it is default on linux)
     # See https://github.com/open62541/open62541/issues/1326
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:8000000")
+endif()
+
+if(UA_ENABLE_MICRO_EMB_DEV_PROFILE)
+    if(NOT (UA_NAMESPACE_ZERO STREQUAL "FULL"))
+        message(FATAL_ERROR "CTT Compliant Micro Embedded Device Server Profile needs full namespace zero")
+    endif()
 endif()
 
 if(UA_BUILD_FUZZING OR UA_BUILD_OSS_FUZZ OR UA_BUILD_FUZZING_CORPUS)
@@ -382,6 +396,14 @@ if(UA_ENABLE_ENCRYPTION)
     # defined in /tools/cmake/FindMbedTLS.cmake.
     find_package(MbedTLS REQUIRED)
     list(APPEND open62541_LIBRARIES ${MBEDTLS_LIBRARIES})
+endif()
+
+if(UA_ENABLE_WEBSOCKET_SERVER)
+    # The recommended way is to install libwebsockets via the OS package manager. If
+    # that is not possible, manually compile libwebsockets and set the cmake variables
+    # defined in /tools/cmake/Findlibwebsockets.cmake
+    find_package(libwebsockets REQUIRED)
+    list(APPEND open62541_LIBRARIES ${LIBWEBSOCKETS_LIBRARIES})
 endif()
 
 #####################
@@ -1112,7 +1134,7 @@ set(open62541_install_nodeset_dir share/open62541/tools/ua-nodeset)
 
 # This list of components allows to define a find_package requirement.
 # E.g.:
-# find_package(open62541 0.4.0 REQUIRED COMPONENTS Events Methods FullNamespace)
+# find_package(open62541 1.0.0 REQUIRED COMPONENTS Events Methods FullNamespace)
 set(open62541_enabled_components "")
 if(UA_NAMESPACE_ZERO STREQUAL "FULL")
     list(APPEND open62541_enabled_components "FullNamespace")
