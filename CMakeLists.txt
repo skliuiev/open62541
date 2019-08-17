@@ -32,22 +32,12 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # Version #
 ###########
 
-set(OPEN62541_VER_MAJOR 1)
-set(OPEN62541_VER_MINOR 0)
-set(OPEN62541_VER_PATCH 0)
-set(OPEN62541_VER_LABEL "-dev") # Appended to the X.Y.Z version format. For example "-rc1" or an empty string
+include(SetGitBasedVersion)
 
-# Set OPEN62541_VER_COMMIT
-if(GIT_FOUND)
-    execute_process(COMMAND ${GIT_EXECUTABLE} describe --always --tags
-                    RESULT_VARIABLE res_var OUTPUT_VARIABLE GIT_COM_ID WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-    if(${res_var} EQUAL 0 AND NOT OPEN62541_VER_COMMIT STREQUAL "")
-        string(REPLACE "\n" "" OPEN62541_VER_COMMIT ${GIT_COM_ID} )
-    endif()
-endif()
-if(NOT OPEN62541_VER_COMMIT OR OPEN62541_VER_COMMIT STREQUAL "")
-    set(OPEN62541_VER_COMMIT "undefined")
-endif()
+# The version string will be automatically set based on the git describe output.
+# This will automate the version strings. Just create a new tag, and the version will be set correctly.
+set_open62541_version()
+MESSAGE(STATUS "open62541 Version: ${OPEN62541_VER_MAJOR}.${OPEN62541_VER_MINOR}.${OPEN62541_VER_PATCH}${OPEN62541_VER_LABEL}")
 
 #################
 # Build Options #
@@ -264,8 +254,8 @@ mark_as_advanced(UA_ENABLE_JSON_ENCODING)
 option(UA_ENABLE_STATUSCODE_DESCRIPTIONS "Enable conversion of StatusCode to human-readable error message" ON)
 mark_as_advanced(UA_ENABLE_STATUSCODE_DESCRIPTIONS)
 
-option(UA_ENABLE_TYPENAMES "Add the type and member names to the UA_DataType structure" ON)
-mark_as_advanced(UA_ENABLE_TYPENAMES)
+option(UA_ENABLE_TYPEDESCRIPTION "Add the type and member names to the UA_DataType structure" ON)
+mark_as_advanced(UA_ENABLE_TYPEDESCRIPTION)
 
 option(UA_ENABLE_NODESET_COMPILER_DESCRIPTIONS "Set node description attribute for nodeset compiler generated nodes" ON)
 mark_as_advanced(UA_ENABLE_NODESET_COMPILER_DESCRIPTIONS)
@@ -345,7 +335,7 @@ option(UA_BUILD_FUZZING_CORPUS "Build the fuzzing corpus" OFF)
 mark_as_advanced(UA_BUILD_FUZZING_CORPUS)
 if(UA_BUILD_FUZZING_CORPUS)
     add_definitions(-DUA_DEBUG_DUMP_PKGS_FILE)
-    set(UA_ENABLE_TYPENAMES ON CACHE STRING "" FORCE)
+    set(UA_ENABLE_TYPEDESCRIPTION ON CACHE STRING "" FORCE)
     #set(UA_DEBUG_DUMP_PKGS ON CACHE STRING "" FORCE)
 endif()
 
@@ -855,6 +845,9 @@ else()
 	if(UA_ENABLE_DA)
 		list(APPEND UA_FILE_DATATYPES ${PROJECT_SOURCE_DIR}/tools/schema/datatypes_dataaccess.txt)
     endif()
+    if(UA_ENABLE_TYPEDESCRIPTION)
+        list(APPEND UA_FILE_DATATYPES ${PROJECT_SOURCE_DIR}/tools/schema/datatypes_typedescription.txt)
+    endif()
 endif()
 
 # standard-defined data types
@@ -998,7 +991,7 @@ else()
     target_include_directories(open62541-object PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
     add_library(open62541-plugins OBJECT ${default_plugin_sources} ${ua_architecture_sources} ${exported_headers})
-    add_dependencies(open62541-plugins open62541-generator-types open62541-generator-transport)
+    add_dependencies(open62541-plugins open62541-generator-types open62541-generator-transport open62541-generator-namespace)
     target_include_directories(open62541-plugins PRIVATE ${PROJECT_SOURCE_DIR}/plugins)
     target_include_directories(open62541-plugins PRIVATE ${PROJECT_BINARY_DIR}/src_generated)
     target_compile_definitions(open62541-plugins PRIVATE -DUA_DYNAMIC_LINKING_EXPORT)
@@ -1059,7 +1052,7 @@ if (UA_ENABLE_DISCOVERY_MULTICAST)
     target_compile_definitions(open62541 PRIVATE -DMDNSD_DYNAMIC_LINKING_EXPORT)
 endif()
 # Generate properly versioned shared library links on Linux
-SET_TARGET_PROPERTIES(open62541 PROPERTIES SOVERSION 0 VERSION "${OPEN62541_VER_MAJOR}.${OPEN62541_VER_MINOR}.${OPEN62541_VER_PATCH}")
+SET_TARGET_PROPERTIES(open62541 PROPERTIES SOVERSION "${OPEN62541_VER_MAJOR}" VERSION "${OPEN62541_VER_MAJOR}.${OPEN62541_VER_MINOR}.${OPEN62541_VER_PATCH}")
 
 ##################################
 #     Architectures changes      #
