@@ -161,12 +161,16 @@ callWithMethodAndObject(UA_Server *server, UA_Session *session,
 
     /* Verify access rights */
     UA_Boolean executable = method->executable;
-    if(session != &server->adminSession)
+    if(session != &server->adminSession) {
+        UA_UNLOCK(server->serviceMutex);
         executable = executable &&
-            server->config.accessControl.getUserExecutableOnObject(server, 
-                           &server->config.accessControl, &session->sessionId,
-                           session->sessionHandle, &request->methodId, method->context,
-                           &request->objectId, object->context);
+                     server->config.accessControl.getUserExecutableOnObject(server,
+                                                                            &server->config.accessControl, &session->sessionId,
+                                                                            session->sessionHandle, &request->methodId, method->context,
+                                                                            &request->objectId, object->context);
+        UA_LOCK(server->serviceMutex);
+    }
+
     if(!executable) {
         result->statusCode = UA_STATUSCODE_BADNOTEXECUTABLE;
         return;
@@ -215,12 +219,14 @@ callWithMethodAndObject(UA_Server *server, UA_Session *session,
     /* Release the output arguments node */
     UA_Nodestore_releaseNode(server->nsCtx, (const UA_Node*)outputArguments);
 
+    UA_UNLOCK(server->serviceMutex);
     /* Call the method */
     result->statusCode = method->method(server, &session->sessionId, session->sessionHandle,
                                         &method->nodeId, method->context,
                                         &object->nodeId, object->context,
                                         request->inputArgumentsSize, request->inputArguments,
                                         result->outputArgumentsSize, result->outputArguments);
+    UA_LOCK(server->serviceMutex);
     /* TODO: Verify Output matches the argument definition */
 }
 
@@ -257,6 +263,7 @@ void Service_Call(UA_Server *server, UA_Session *session,
                   UA_CallResponse *response) {
     UA_LOG_DEBUG_SESSION(&server->config.logger, session,
                          "Processing CallRequest");
+    UA_LOCK_ASSERT(server->serviceMutex, 1);
 
     if(server->config.maxNodesPerMethodCall != 0 &&
        request->methodsToCallSize > server->config.maxNodesPerMethodCall) {
@@ -274,7 +281,9 @@ UA_CallMethodResult UA_EXPORT
 UA_Server_call(UA_Server *server, const UA_CallMethodRequest *request) {
     UA_CallMethodResult result;
     UA_CallMethodResult_init(&result);
+    UA_LOCK(server->serviceMutex);
     Operation_CallMethod(server, &server->adminSession, NULL, request, &result);
+    UA_UNLOCK(server->serviceMutex);
     return result;
 }
 

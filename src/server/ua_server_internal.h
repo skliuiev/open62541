@@ -29,6 +29,11 @@
 
 _UA_BEGIN_DECLS
 
+#if UA_MULTITHREADING >= 100
+#undef UA_THREADSAFE
+#define UA_THREADSAFE UA_DEPRECATED
+#endif
+
 #ifdef UA_ENABLE_PUBSUB
 #include "ua_pubsub_manager.h"
 #endif
@@ -112,6 +117,11 @@ struct UA_Server {
 
    /* Overwritten service table */
    UA_ServiceTable serviceTable;
+
+#if UA_MULTITHREADING >= 100
+    UA_LOCK_TYPE(networkMutex)
+    UA_LOCK_TYPE(serviceMutex)
+#endif
 };
 
 /*****************/
@@ -181,8 +191,8 @@ const UA_Node * getNodeType(UA_Server *server, const UA_Node *node);
 
 /* Write a node attribute with a defined session */
 UA_StatusCode
-UA_Server_writeWithSession(UA_Server *server, UA_Session *session,
-                           const UA_WriteValue *value);
+writeWithSession(UA_Server *server, UA_Session *session,
+                 const UA_WriteValue *value);
 
 
 /* Many services come as an array of operations. This function generalizes the
@@ -201,6 +211,57 @@ UA_Server_processServiceOperations(UA_Server *server, UA_Session *session,
                                    size_t *responseOperations,
                                    const UA_DataType *responseOperationsType)
     UA_FUNC_ATTR_WARN_UNUSED_RESULT;
+
+
+/******************************************/
+/* Internal function calls, without locks */
+/******************************************/
+UA_StatusCode
+deleteNode(UA_Server *server, const UA_NodeId nodeId,
+           UA_Boolean deleteReferences);
+
+UA_StatusCode
+addNode(UA_Server *server, const UA_NodeClass nodeClass, const UA_NodeId *requestedNewNodeId,
+        const UA_NodeId *parentNodeId, const UA_NodeId *referenceTypeId,
+        const UA_QualifiedName browseName, const UA_NodeId *typeDefinition,
+        const UA_NodeAttributes *attr, const UA_DataType *attributeType,
+        void *nodeContext, UA_NodeId *outNewNodeId);
+
+UA_StatusCode
+setVariableNode_dataSource(UA_Server *server, const UA_NodeId nodeId,
+                           const UA_DataSource dataSource);
+
+UA_StatusCode
+setMethodNode_callback(UA_Server *server,
+                       const UA_NodeId methodNodeId,
+                       UA_MethodCallback methodCallback);
+
+UA_StatusCode
+writeAttribute(UA_Server *server, const UA_WriteValue *value);
+
+UA_StatusCode
+writeWithWriteValue(UA_Server *server, const UA_NodeId *nodeId,
+                    const UA_AttributeId attributeId,
+                    const UA_DataType *attr_type,
+                    const void *attr);
+
+UA_DataValue
+readAttribute(UA_Server *server, const UA_ReadValueId *item,
+              UA_TimestampsToReturn timestamps);
+
+UA_StatusCode
+readWithReadValue(UA_Server *server, const UA_NodeId *nodeId,
+                  const UA_AttributeId attributeId, void *v);
+
+UA_BrowsePathResult
+translateBrowsePathToNodeIds(UA_Server *server, const UA_BrowsePath *browsePath);
+
+void
+monitoredItem_sampleCallback(UA_Server *server, UA_MonitoredItem *monitoredItem);
+
+UA_BrowsePathResult
+browseSimplifiedBrowsePath(UA_Server *server, const UA_NodeId origin,
+                           size_t browsePathSize, const UA_QualifiedName *browsePath);
 
 /***************************************/
 /* Check Information Model Consistency */
