@@ -82,7 +82,10 @@ UA_UInt16 UA_Server_addNamespace(UA_Server *server, const char* name) {
     UA_String nameString;
     nameString.length = strlen(name);
     nameString.data = (UA_Byte*)(uintptr_t)name;
-    return addNamespace(server, nameString);
+    UA_LOCK(server->serviceMutex);
+    UA_UInt16 retVal = addNamespace(server, nameString);
+    UA_UNLOCK(server->serviceMutex);
+    return retVal;
 }
 
 UA_ServerConfig*
@@ -97,6 +100,8 @@ UA_Server_getConfig(UA_Server *server)
 UA_StatusCode
 UA_Server_getNamespaceByName(UA_Server *server, const UA_String namespaceUri,
                              size_t* foundIndex) {
+    UA_LOCK(server->serviceMutex);
+
     /* ensure that the uri for ns1 is set up from the app description */
     setupNs1Uri(server);
 
@@ -104,17 +109,22 @@ UA_Server_getNamespaceByName(UA_Server *server, const UA_String namespaceUri,
         if(!UA_String_equal(&server->namespaces[idx], &namespaceUri))
             continue;
         (*foundIndex) = idx;
+        UA_UNLOCK(server->serviceMutex);
         return UA_STATUSCODE_GOOD;
     }
+    UA_UNLOCK(server->serviceMutex);
     return UA_STATUSCODE_BADNOTFOUND;
 }
 
 UA_StatusCode
 UA_Server_forEachChildNodeCall(UA_Server *server, UA_NodeId parentNodeId,
                                UA_NodeIteratorCallback callback, void *handle) {
+    UA_LOCK(server->serviceMutex);
     const UA_Node *parent = UA_Nodestore_getNode(server->nsCtx, &parentNodeId);
-    if(!parent)
+    if(!parent) {
+        UA_UNLOCK(server->serviceMutex);
         return UA_STATUSCODE_BADNODEIDINVALID;
+    }
 
     /* TODO: We need to do an ugly copy of the references array since users may
      * delete references from within the callback. In single-threaded mode this
@@ -126,6 +136,7 @@ UA_Server_forEachChildNodeCall(UA_Server *server, UA_NodeId parentNodeId,
     UA_Node *parentCopy = UA_Node_copy_alloc(parent);
     if(!parentCopy) {
         UA_Nodestore_releaseNode(server->nsCtx, parent);
+        UA_UNLOCK(server->serviceMutex);
         return UA_STATUSCODE_BADUNEXPECTEDERROR;
     }
 
@@ -133,8 +144,10 @@ UA_Server_forEachChildNodeCall(UA_Server *server, UA_NodeId parentNodeId,
     for(size_t i = parentCopy->referencesSize; i > 0; --i) {
         UA_NodeReferenceKind *ref = &parentCopy->references[i - 1];
         for(size_t j = 0; j<ref->targetIdsSize; j++) {
+            UA_UNLOCK(server->serviceMutex);
             retval = callback(ref->targetIds[j].nodeId, ref->isInverse,
                               ref->referenceTypeId, handle);
+            UA_LOCK(server->serviceMutex);
             if(retval != UA_STATUSCODE_GOOD)
                 goto cleanup;
         }
@@ -145,6 +158,7 @@ cleanup:
     UA_free(parentCopy);
 
     UA_Nodestore_releaseNode(server->nsCtx, parent);
+    UA_UNLOCK(server->serviceMutex);
     return retval;
 }
 
@@ -156,14 +170,18 @@ cleanup:
 void UA_Server_delete(UA_Server *server) {
     /* Delete all internal data */
     UA_SecureChannelManager_deleteMembers(&server->secureChannelManager);
+    UA_LOCK(server->serviceMutex);
     UA_SessionManager_deleteMembers(&server->sessionManager);
+    UA_UNLOCK(server->serviceMutex);
     UA_Array_delete(server->namespaces, server->namespacesSize, &UA_TYPES[UA_TYPES_STRING]);
 
 #ifdef UA_ENABLE_SUBSCRIPTIONS
     UA_MonitoredItem *mon, *mon_tmp;
     LIST_FOREACH_SAFE(mon, &server->localMonitoredItems, listEntry, mon_tmp) {
         LIST_REMOVE(mon, listEntry);
+        UA_LOCK(server->serviceMutex);
         UA_MonitoredItem_delete(server, mon);
+        UA_UNLOCK(server->serviceMutex);
     }
 #endif
 
@@ -175,13 +193,10 @@ void UA_Server_delete(UA_Server *server) {
     UA_DiscoveryManager_deleteMembers(&server->discoveryManager, server);
 #endif
 
-#if UA_MULTITHREADING >= 100
-    UA_LOCK_DESTROY(server->networkMutex)
-    UA_LOCK_DESTROY(server->serviceMutex)
-#endif
-
     /* Clean up the Admin Session */
+    UA_LOCK(server->serviceMutex);
     UA_Session_deleteMembersCleanup(&server->adminSession, server);
+    UA_UNLOCK(server->serviceMutex);
 
     /* Clean up the work queue */
     UA_WorkQueue_cleanup(&server->workQueue);
@@ -196,6 +211,11 @@ void UA_Server_delete(UA_Server *server) {
     UA_ServerConfig_clean(&server->config);
 
     UA_ServiceTable_clean(&server->serviceTable);
+    
+#if UA_MULTITHREADING >= 100
+    UA_LOCK_DESTROY(server->networkMutex)
+    UA_LOCK_DESTROY(server->serviceMutex)
+#endif
 
     /* Delete the server itself */
     UA_free(server);
@@ -204,12 +224,14 @@ void UA_Server_delete(UA_Server *server) {
 /* Recurring cleanup. Removing unused and timed-out channels and sessions */
 static void
 UA_Server_cleanup(UA_Server *server, void *_) {
+    UA_LOCK(server->serviceMutex);
     UA_DateTime nowMonotonic = UA_DateTime_nowMonotonic();
     UA_SessionManager_cleanupTimedOut(&server->sessionManager, nowMonotonic);
     UA_SecureChannelManager_cleanupTimedOut(&server->secureChannelManager, nowMonotonic);
 #ifdef UA_ENABLE_DISCOVERY
     UA_Discovery_cleanupTimedOut(server, nowMonotonic);
 #endif
+    UA_UNLOCK(server->serviceMutex);
 }
 
 /********************/
@@ -323,30 +345,59 @@ setServerShutdown(UA_Server *server) {
 UA_StatusCode
 UA_Server_addTimedCallback(UA_Server *server, UA_ServerCallback callback,
                            void *data, UA_DateTime date, UA_UInt64 *callbackId) {
-    return UA_Timer_addTimedCallback(&server->timer,
-                                     (UA_ApplicationCallback)callback,
-                                     server, data, date, callbackId);
+    UA_LOCK(server->serviceMutex);
+    UA_StatusCode retval = UA_Timer_addTimedCallback(&server->timer,
+                                                     (UA_ApplicationCallback)callback,
+                                                      server, data, date, callbackId);
+    UA_UNLOCK(server->serviceMutex);
+    return retval;
+}
+
+UA_StatusCode
+addRepeatedCallback(UA_Server *server, UA_ServerCallback callback,
+                              void *data, UA_Double interval_ms,
+                              UA_UInt64 *callbackId) {
+    return UA_Timer_addRepeatedCallback(&server->timer,
+                                        (UA_ApplicationCallback)callback,
+                                         server, data, interval_ms, callbackId);
 }
 
 UA_StatusCode
 UA_Server_addRepeatedCallback(UA_Server *server, UA_ServerCallback callback,
                               void *data, UA_Double interval_ms,
                               UA_UInt64 *callbackId) {
-    return UA_Timer_addRepeatedCallback(&server->timer,
-                                        (UA_ApplicationCallback)callback,
-                                        server, data, interval_ms, callbackId);
+    UA_LOCK(server->serviceMutex);
+    UA_StatusCode retval = addRepeatedCallback(server, callback, data, interval_ms, callbackId);
+    UA_UNLOCK(server->serviceMutex);
+    return retval;
 }
 
 UA_StatusCode
-UA_Server_changeRepeatedCallbackInterval(UA_Server *server, UA_UInt64 callbackId,
+changeRepeatedCallbackInterval(UA_Server *server, UA_UInt64 callbackId,
                                          UA_Double interval_ms) {
     return UA_Timer_changeRepeatedCallbackInterval(&server->timer, callbackId,
                                                    interval_ms);
 }
 
+UA_StatusCode
+UA_Server_changeRepeatedCallbackInterval(UA_Server *server, UA_UInt64 callbackId,
+                                         UA_Double interval_ms) {
+    UA_LOCK(server->serviceMutex);
+    UA_StatusCode retval = changeRepeatedCallbackInterval(server, callbackId, interval_ms);
+    UA_UNLOCK(server->serviceMutex);
+    return retval;
+}
+
+void
+removeCallback(UA_Server *server, UA_UInt64 callbackId) {
+    UA_Timer_removeCallback(&server->timer, callbackId);
+}
+
 void
 UA_Server_removeCallback(UA_Server *server, UA_UInt64 callbackId) {
-    UA_Timer_removeCallback(&server->timer, callbackId);
+    UA_LOCK(server->serviceMutex);
+    removeCallback(server, callbackId);
+    UA_UNLOCK(server->serviceMutex);
 }
 
 UA_StatusCode UA_EXPORT
@@ -368,7 +419,9 @@ UA_Server_updateCertificate(UA_Server *server,
         LIST_FOREACH(current, &sm->sessions, pointers) {
             if (UA_ByteString_equal(oldCertificate,
                                     &current->session.header.channel->securityPolicy->localCertificate)) {
+                UA_LOCK(server->serviceMutex);
                 UA_SessionManager_removeSession(sm, &current->session.header.authenticationToken);
+                UA_UNLOCK(server->serviceMutex);
             }
         }
 

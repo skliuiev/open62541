@@ -122,7 +122,7 @@ typedef void (*UA_ServerCallback)(UA_Server *server, void *data);
  *        identifier is not set.
  * @return Upon success, UA_STATUSCODE_GOOD is returned. An error code
  *         otherwise. */
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_addTimedCallback(UA_Server *server, UA_ServerCallback callback,
                            void *data, UA_DateTime date, UA_UInt64 *callbackId);
 
@@ -139,11 +139,11 @@ UA_Server_addTimedCallback(UA_Server *server, UA_ServerCallback callback,
  *        identifier is not set.
  * @return Upon success, UA_STATUSCODE_GOOD is returned. An error code
  *         otherwise. */
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_addRepeatedCallback(UA_Server *server, UA_ServerCallback callback,
                               void *data, UA_Double interval_ms, UA_UInt64 *callbackId);
 
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_changeRepeatedCallbackInterval(UA_Server *server, UA_UInt64 callbackId,
                                          UA_Double interval_ms);
 
@@ -151,7 +151,7 @@ UA_Server_changeRepeatedCallbackInterval(UA_Server *server, UA_UInt64 callbackId
  *
  * @param server The server object.
  * @param callbackId The id of the callback */
-void UA_EXPORT
+void UA_EXPORT UA_THREADSAFE
 UA_Server_removeCallback(UA_Server *server, UA_UInt64 callbackId);
 
 #define UA_Server_removeRepeatedCallback(server, callbackId) \
@@ -473,18 +473,18 @@ UA_Server_writeExecutable(UA_Server *server, const UA_NodeId nodeId,
 
 /* Browse the references of a particular node. See the definition of
  * BrowseDescription structure for details. */
-UA_BrowseResult UA_EXPORT
+UA_BrowseResult UA_EXPORT UA_THREADSAFE
 UA_Server_browse(UA_Server *server, UA_UInt32 maxReferences,
                  const UA_BrowseDescription *bd);
 
-UA_BrowseResult UA_EXPORT
+UA_BrowseResult UA_EXPORT UA_THREADSAFE
 UA_Server_browseNext(UA_Server *server, UA_Boolean releaseContinuationPoint,
                      const UA_ByteString *continuationPoint);
 
 /* Nonstandard version of the browse service that recurses into child nodes.
  * Possible loops (that can occur for non-hierarchical references) are handled
  * by adding every target node at most once to the results array. */
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_browseRecursive(UA_Server *server, const UA_BrowseDescription *bd,
                           size_t *resultsSize, UA_ExpandedNodeId **results);
 
@@ -500,7 +500,7 @@ UA_Server_translateBrowsePathToNodeIds(UA_Server *server,
  * RelativePath that specifies forward references which are subtypes of the
  * HierarchicalReferences ReferenceType. All Nodes followed by the browsePath
  * shall be of the NodeClass Object or Variable. */
-UA_BrowsePathResult UA_EXPORT
+UA_BrowsePathResult UA_EXPORT UA_THREADSAFE
 UA_Server_browseSimplifiedBrowsePath(UA_Server *server, const UA_NodeId origin,
                                      size_t browsePathSize,
                                      const UA_QualifiedName *browsePath);
@@ -515,7 +515,7 @@ typedef UA_StatusCode
                            UA_NodeId referenceTypeId, void *handle);
 #endif
 
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_forEachChildNodeCall(UA_Server *server, UA_NodeId parentNodeId,
                                UA_NodeIteratorCallback callback, void *handle);
 
@@ -536,7 +536,7 @@ UA_Server_forEachChildNodeCall(UA_Server *server, UA_NodeId parentNodeId,
  * @param client the client which is used to call the RegisterServer. It must
  *        already be connected to the correct endpoint
  * @param semaphoreFilePath optional parameter pointing to semaphore file. */
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_register_discovery(UA_Server *server, struct UA_Client *client,
                              const char* semaphoreFilePath);
 
@@ -545,7 +545,7 @@ UA_Server_register_discovery(UA_Server *server, struct UA_Client *client,
  * @param server
  * @param client the client which is used to call the RegisterServer. It must
  *        already be connected to the correct endpoint */
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_unregister_discovery(UA_Server *server, struct UA_Client *client);
 
  /* Adds a periodic callback to register the server with the LDS (local discovery server)
@@ -571,7 +571,7 @@ UA_Server_unregister_discovery(UA_Server *server, struct UA_Client *client);
   * @param intervalMs
   * @param delayFirstRegisterMs
   * @param periodicCallbackId */
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_addPeriodicServerRegisterCallback(UA_Server *server, struct UA_Client *client,
                                             const char* discoveryServerUrl,
                                             UA_Double intervalMs,
@@ -591,7 +591,7 @@ typedef void (*UA_Server_registerServerCallback)(const UA_RegisteredServer *regi
  * @param cb the callback
  * @param data data passed to the callback
  * @return UA_STATUSCODE_SUCCESS on success */
-void UA_EXPORT
+void UA_EXPORT UA_THREADSAFE
 UA_Server_setRegisterServerCallback(UA_Server *server, UA_Server_registerServerCallback cb,
                                     void* data);
 
@@ -619,7 +619,7 @@ typedef void (*UA_Server_serverOnNetworkCallback)(const UA_ServerOnNetwork *serv
  * @param cb the callback
  * @param data data passed to the callback
  * @return UA_STATUSCODE_SUCCESS on success */
-void UA_EXPORT
+void UA_EXPORT UA_THREADSAFE
 UA_Server_setServerOnNetworkCallback(UA_Server *server,
                                      UA_Server_serverOnNetworkCallback cb,
                                      void* data);
@@ -748,16 +748,16 @@ typedef struct {
                        const UA_NodeId *nodeId, void **nodeContext);
 } UA_NodeTypeLifecycle;
 
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_setNodeTypeLifecycle(UA_Server *server, UA_NodeId nodeId,
                                UA_NodeTypeLifecycle lifecycle);
 
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_getNodeContext(UA_Server *server, UA_NodeId nodeId,
                          void **nodeContext);
 
 /* Careful! The user has to ensure that the destructor callbacks still work. */
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_setNodeContext(UA_Server *server, UA_NodeId nodeId,
                          void *nodeContext);
 
@@ -887,7 +887,7 @@ typedef struct {
                     const UA_DataValue *data);
 } UA_ValueCallback;
 
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_setVariableNode_valueCallback(UA_Server *server,
                                         const UA_NodeId nodeId,
                                         const UA_ValueCallback callback);
@@ -990,13 +990,13 @@ UA_Server_setMethodNode_callback(UA_Server *server,
  * @param propertyName The name of the property
  * @param value The value to be set for the event attribute
  * @return The StatusCode for setting the event attribute */
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_writeObjectProperty(UA_Server *server, const UA_NodeId objectId,
                               const UA_QualifiedName propertyName,
                               const UA_Variant value);
 
 /* Directly point to the scalar value instead of a variant */
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_writeObjectProperty_scalar(UA_Server *server, const UA_NodeId objectId,
                                      const UA_QualifiedName propertyName,
                                      const void *value, const UA_DataType *type);
@@ -1008,7 +1008,7 @@ UA_Server_writeObjectProperty_scalar(UA_Server *server, const UA_NodeId objectId
  * @param propertyName The name of the property
  * @param value Contains the property value after reading. Must not be NULL.
  * @return The StatusCode for setting the event attribute */
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_readObjectProperty(UA_Server *server, const UA_NodeId objectId,
                              const UA_QualifiedName propertyName,
                              UA_Variant *value);
@@ -1363,22 +1363,22 @@ UA_Server_updateCertificate(UA_Server *server,
  * Utility Functions
  * ----------------- */
 /* Add a new namespace to the server. Returns the index of the new namespace */
-UA_UInt16 UA_EXPORT UA_Server_addNamespace(UA_Server *server, const char* name);
+UA_UInt16 UA_EXPORT UA_THREADSAFE UA_Server_addNamespace(UA_Server *server, const char* name);
 
 /* Get namespace by name from the server. */
-UA_StatusCode UA_EXPORT
+UA_StatusCode UA_EXPORT UA_THREADSAFE
 UA_Server_getNamespaceByName(UA_Server *server, const UA_String namespaceUri,
                              size_t* foundIndex);
 
 #ifdef UA_ENABLE_HISTORIZING
-UA_Boolean UA_EXPORT
+UA_Boolean UA_EXPORT UA_THREADSAFE
 UA_Server_AccessControl_allowHistoryUpdateUpdateData(UA_Server *server,
                                                      const UA_NodeId *sessionId, void *sessionContext,
                                                      const UA_NodeId *nodeId,
                                                      UA_PerformUpdateType performInsertReplace,
                                                      const UA_DataValue *value);
 
-UA_Boolean UA_EXPORT
+UA_Boolean UA_EXPORT UA_THREADSAFE
 UA_Server_AccessControl_allowHistoryUpdateDeleteRawModified(UA_Server *server,
                                                             const UA_NodeId *sessionId, void *sessionContext,
                                                             const UA_NodeId *nodeId,
