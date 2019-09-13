@@ -11,7 +11,7 @@ UA_Server_AddService(UA_Server *server, UA_UInt32 requestNodeId, UA_UInt32 reque
     UA_ServiceTable *table = &server->serviceTable;
 
     if(0 == table->size || NULL == table->entries) {
-        table->entries = UA_malloc(sizeof(struct UA_ServiceTableEntry));
+        table->entries = (UA_ServiceTableEntry *)UA_malloc(sizeof(struct UA_ServiceTableEntry));
         if(NULL == table->entries) {
             return UA_STATUSCODE_BADOUTOFMEMORY;
         }
@@ -25,10 +25,10 @@ UA_Server_AddService(UA_Server *server, UA_UInt32 requestNodeId, UA_UInt32 reque
     }
 
     if(NULL != table->entries) {
-        UA_UInt16 newSize = table->size + 1;
+        UA_UInt16 newSize = (UA_UInt16)(table->size + 1);
         void *entries = UA_realloc(table->entries, sizeof(struct UA_ServiceTableEntry) * newSize);
         if(NULL != entries) {
-            table->entries = entries;
+            table->entries = (UA_ServiceTableEntry *)entries;
         }
 
         if(NULL == table->entries) {
