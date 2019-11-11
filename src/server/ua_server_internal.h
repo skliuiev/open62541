@@ -23,7 +23,7 @@
 #include "ua_connection_internal.h"
 #include "ua_securechannel_manager.h"
 #include "ua_session_manager.h"
-#include "ua_asyncmethod_manager.h"
+#include "ua_server_async.h"
 #include "ua_timer.h"
 #include "ua_util_internal.h"
 #include "ua_workqueue.h"
@@ -63,28 +63,6 @@ typedef enum {
     UA_SERVERLIFECYLE_RUNNING
 } UA_ServerLifecycle;
 
-#if UA_MULTITHREADING >= 100
-struct AsyncMethodQueueElement {
-        UA_CallMethodRequest m_Request;
-        UA_CallMethodResult	m_Response;
-        UA_DateTime	m_tDispatchTime;
-        UA_UInt32	m_nRequestId;
-        UA_NodeId	m_nSessionId;
-        UA_UInt32	m_nIndex;
-
-        SIMPLEQ_ENTRY(AsyncMethodQueueElement) next;
-    };
-	
-/* Internal Helper to transfer info */
-    struct AsyncMethodContextInternal {
-        UA_UInt32 nRequestId;
-        UA_NodeId nSessionId;
-        UA_UInt32 nIndex;
-        const UA_CallRequest* pRequest;
-        UA_SecureChannel* pChannel;
-    };
-#endif	
-	
 struct UA_Server {
     /* Config */
     UA_ServerConfig config;
@@ -92,16 +70,13 @@ struct UA_Server {
     UA_DateTime endTime; /* Zeroed out. If a time is set, then the server shuts
                           * down once the time has been reached */
 
-    /* Nodestore */
-    void *nsCtx;
-
     UA_ServerLifecycle state;
 
     /* Security */
     UA_SecureChannelManager secureChannelManager;
     UA_SessionManager sessionManager;
 #if UA_MULTITHREADING >= 100
-    UA_AsyncMethodManager asyncMethodManager;
+    UA_AsyncManager asyncManager;
 #endif
     UA_Session adminSession; /* Local access to the services (for startup and
                               * maintenance) uses this Session with all possible
@@ -148,20 +123,7 @@ struct UA_Server {
 #if UA_MULTITHREADING >= 100
     UA_LOCK_TYPE(networkMutex)
     UA_LOCK_TYPE(serviceMutex)
-
-	/* Async Method Handling */
-    UA_UInt32	nMQCurSize;		/* actual size of queue */
-    UA_UInt64	nCBIdIntegrity;	/* id of callback queue check callback  */
-    UA_UInt64	nCBIdResponse;	/* id of callback check for a response  */
-
-    UA_LOCK_TYPE(ua_request_queue_lock)
-    UA_LOCK_TYPE(ua_response_queue_lock)
-    UA_LOCK_TYPE(ua_pending_list_lock)
-
-    SIMPLEQ_HEAD(ua_method_request_queue, AsyncMethodQueueElement) ua_method_request_queue;    
-    SIMPLEQ_HEAD(ua_method_response_queue, AsyncMethodQueueElement) ua_method_response_queue;
-    SIMPLEQ_HEAD(ua_method_pending_list, AsyncMethodQueueElement) ua_method_pending_list;
-#endif /* UA_MULTITHREADING >= 100 */
+#endif
 };
 
 /*****************/
@@ -234,15 +196,6 @@ UA_StatusCode
 writeWithSession(UA_Server *server, UA_Session *session,
                  const UA_WriteValue *value);
 
-#if UA_MULTITHREADING >= 100
-void
-UA_Server_InsertMethodResponse(UA_Server *server, const UA_UInt32 nRequestId,
-                               const UA_NodeId* nSessionId, const UA_UInt32 nIndex,
-                               const UA_CallMethodResult* response);
-void 
-    UA_Server_CallMethodResponse(UA_Server *server, void* data);
-#endif
-
 UA_StatusCode
 sendResponse(UA_SecureChannel *channel, UA_UInt32 requestId, UA_UInt32 requestHandle,
              UA_ResponseHeader *responseHeader, const UA_DataType *responseType);
@@ -263,16 +216,6 @@ UA_Server_processServiceOperations(UA_Server *server, UA_Session *session,
                                    size_t *responseOperations,
                                    const UA_DataType *responseOperationsType)
     UA_FUNC_ATTR_WARN_UNUSED_RESULT;
-
-UA_StatusCode
-UA_Server_processServiceOperationsAsync(UA_Server *server, UA_Session *session,
-                                        UA_ServiceOperation operationCallback,
-                                        void *context,
-                                        const size_t *requestOperations,
-                                        const UA_DataType *requestOperationsType,
-                                        size_t *responseOperations,
-                                        const UA_DataType *responseOperationsType)
-UA_FUNC_ATTR_WARN_UNUSED_RESULT;
 
 /******************************************/
 /* Internal function calls, without locks */
