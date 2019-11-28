@@ -291,6 +291,13 @@ mark_as_advanced(UA_MSVC_FORCE_STATIC_CRT)
 option(UA_FILE_NS0 "Override the NodeSet xml file used to generate namespace zero")
 mark_as_advanced(UA_FILE_NS0)
 
+# Blacklist file passed as --blacklist to the nodeset compiler. All the given nodes will be removed from the generated
+# nodeset, including all the references to and from that node. The format is a node id per line.
+# Supported formats: "i=123" (for NS0), "ns=2;s=asdf" (matches NS2 in that specific file), or recommended
+# "ns=http://opcfoundation.org/UA/DI/;i=123" namespace index independent node id
+option(UA_FILE_NS0_BLACKLIST "File containing blacklisted nodes which should not be included in the generated nodeset code.")
+mark_as_advanced(UA_FILE_NS0_BLACKLIST)
+
 # Semaphores/file system may not be available on embedded devices. It can be
 # disabled with the following option
 option(UA_ENABLE_DISCOVERY_SEMAPHORE "Enable Discovery Semaphore support" ON)
@@ -990,6 +997,7 @@ ua_generate_nodeset(
     NAME "ns0"
     FILE ${UA_FILE_NODESETS} ${UA_NODESET_FILE_DA}
     INTERNAL
+    BLACKLIST ${UA_FILE_NS0_BLACKLIST}
     IGNORE "${PROJECT_SOURCE_DIR}/tools/nodeset_compiler/NodeID_NS0_Base.txt"
     DEPENDS_TARGET "open62541-generator-types"
 )
@@ -1134,6 +1142,9 @@ GET_PROPERTY(ua_architecture_remove_definitions GLOBAL PROPERTY UA_ARCHITECTURE_
 if (NOT "${ua_architecture_remove_definitions}" STREQUAL "")
   string(REPLACE " " ";" ua_architecture_remove_definitions_list ${ua_architecture_remove_definitions})
   remove_definitions(${ua_architecture_remove_definitions_list})
+  foreach ( flag ${ua_architecture_remove_definitions} )
+      string(REPLACE "${flag}" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  endforeach()
 endif(NOT "${ua_architecture_remove_definitions}" STREQUAL "")
 
 GET_PROPERTY(ua_architecture_append_to_library GLOBAL PROPERTY UA_ARCHITECTURE_APPEND_TO_LIBRARY)
