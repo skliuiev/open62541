@@ -125,7 +125,9 @@ foreach(arch_ ${architectures})
 endforeach(arch_ ${architectures})
 
 # Options
+option(BUILD_SHARED_LIBS "Enable building of shared libraries (dll/so)" OFF)
 set(UA_LOGLEVEL 300 CACHE STRING "Level at which logs shall be reported")
+set(UA_MULTITHREADING 0 CACHE STRING "Level of multithreading (0-99: No Multithreading, 100-199: Thread-Safe API, >=200: Internal Threads")
 option(UA_ENABLE_HISTORIZING "Enable server and client to provide historical access." OFF)
 option(UA_ENABLE_METHODCALLS "Enable the Method service set" ON)
 option(UA_ENABLE_NODEMANAGEMENT "Enable dynamic addition and removal of nodes at runtime" ON)
@@ -134,8 +136,8 @@ option(UA_ENABLE_SUBSCRIPTIONS_EVENTS "Enable the use of event subscriptions" OF
 option(UA_ENABLE_DISCOVERY "Enable Discovery Service (LDS)" ON)
 option(UA_ENABLE_DISCOVERY_MULTICAST "Enable Discovery Service with multicast support (LDS-ME)" OFF)
 option(UA_ENABLE_ENCRYPTION "Enable encryption support (uses mbedTLS)" OFF)
+option(UA_ENABLE_DA "Enable OPC UA DataAccess (Part 8) definitions" ON)
 option(UA_ENABLE_MICRO_EMB_DEV_PROFILE "Builds CTT Compliant Micro Embedded Device Server Profile" OFF)
-option(BUILD_SHARED_LIBS "Enable building of shared libraries (dll/so)" OFF)
 option(UA_ENABLE_WEBSOCKET_SERVER "Enable websocket support (uses libwebsockets)" OFF)
 
 # Namespace Zero
@@ -170,7 +172,6 @@ if(UA_BUILD_FUZZING OR UA_BUILD_OSS_FUZZ OR UA_BUILD_FUZZING_CORPUS)
     set(UA_ENABLE_SUBSCRIPTIONS_EVENTS ON CACHE STRING "" FORCE)
 endif()
 
-
 # It should not be possible to enable events without enabling subscriptions and full ns0
 #if((UA_ENABLE_SUBSCRIPTIONS_EVENTS) AND (NOT (UA_ENABLE_SUBSCRIPTIONS AND UA_NAMESPACE_ZERO STREQUAL "FULL")))
 #    message(FATAL_ERROR "Unable to enable events without UA_ENABLE_SUBSCRIPTIONS and full namespace 0")
@@ -197,21 +198,15 @@ mark_as_advanced(UA_ENABLE_QUERY)
 
 option(UA_ENABLE_IMMUTABLE_NODES "Nodes in the information model are not edited but copied and replaced" OFF)
 mark_as_advanced(UA_ENABLE_IMMUTABLE_NODES)
+if(UA_MULTITHREADING GREATER 100)
+    set(UA_ENABLE_IMMUTABLE_NODES ON)
+endif()
 
 option(UA_ENABLE_EXPERIMENTAL_HISTORIZING "Enable client experimental historical access features" OFF)
 mark_as_advanced(UA_ENABLE_EXPERIMENTAL_HISTORIZING)
 
-set(UA_MULTITHREADING 0 CACHE STRING "Level of multithreading")
-mark_as_advanced(UA_MULTITHREADING)
-if (UA_MULTITHREADING GREATER 100)
-    set(UA_ENABLE_IMMUTABLE_NODES ON)
-endif()
-
 option(UA_ENABLE_PUBSUB "Enable publish/subscribe" OFF)
 mark_as_advanced(UA_ENABLE_PUBSUB)
-
-option(UA_ENABLE_DA "Enable data access" ON)
-mark_as_advanced(UA_ENABLE_DA)
 
 option(UA_ENABLE_PUBSUB_ETH_UADP "Enable publish/subscribe UADP over Ethernet" OFF)
 mark_as_advanced(UA_ENABLE_PUBSUB_ETH_UADP)
@@ -296,6 +291,13 @@ mark_as_advanced(UA_MSVC_FORCE_STATIC_CRT)
 option(UA_FILE_NS0 "Override the NodeSet xml file used to generate namespace zero")
 mark_as_advanced(UA_FILE_NS0)
 
+# Blacklist file passed as --blacklist to the nodeset compiler. All the given nodes will be removed from the generated
+# nodeset, including all the references to and from that node. The format is a node id per line.
+# Supported formats: "i=123" (for NS0), "ns=2;s=asdf" (matches NS2 in that specific file), or recommended
+# "ns=http://opcfoundation.org/UA/DI/;i=123" namespace index independent node id
+option(UA_FILE_NS0_BLACKLIST "File containing blacklisted nodes which should not be included in the generated nodeset code.")
+mark_as_advanced(UA_FILE_NS0_BLACKLIST)
+
 # Semaphores/file system may not be available on embedded devices. It can be
 # disabled with the following option
 option(UA_ENABLE_DISCOVERY_SEMAPHORE "Enable Discovery Semaphore support" ON)
@@ -372,8 +374,8 @@ if(BUILD_SHARED_LIBS)
 endif()
 
 # Warn if experimental features are enabled
-if(UA_MULTITHREADING)
-    MESSAGE(WARNING "UA_MULTITHREADING is enabled. The feature is under development and marked as EXPERIMENTAL")
+if(UA_MULTITHREADING GREATER 199)
+    MESSAGE(WARNING "UA_MULTITHREADING >= 200. Internal threads of the server are an EXPERIMENTAL feature. Expect bugs")
 endif()
 
 ########################
@@ -416,33 +418,63 @@ endif()
 # Compiler Settings #
 #####################
 
-include(CompilerFlags)
+# Check if a C compiler flag is supported and add it (if supported)
+# Taken from https://stackoverflow.com/a/33266748
+include(CheckCCompilerFlag)
+function(check_add_cc_flag CC_FLAG)
+    string(FIND "${CMAKE_C_FLAGS}" "${CC_FLAG}" flag_already_set)
+    if(flag_already_set EQUAL -1)
+        message(STATUS "Test CC flag ${CC_FLAG}")
+        check_c_compiler_flag("${CC_FLAG}" flag_supported)
+        if(flag_supported)
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CC_FLAG}" PARENT_SCOPE)
+        endif()
+        unset(flag_supported CACHE)
+    endif()
+endfunction()
+
 if(NOT UA_COMPILE_AS_CXX AND (CMAKE_COMPILER_IS_GNUCC OR "x${CMAKE_C_COMPILER_ID}" STREQUAL "xClang"))
-    # Compiler
-    add_definitions(-std=c99 -pipe
-                    -Wall -Wextra -Wpedantic
-                    -Wno-static-in-inline # clang doesn't like the use of static inline methods inside static inline methods
-                    -Wno-overlength-strings # may happen in the nodeset compiler when complex values are directly encoded
-                    -Wno-unused-parameter # some methods may require unused arguments to cast to a method pointer
-                    -Wmissing-prototypes -Wstrict-prototypes -Wredundant-decls
-                    -Wformat -Wformat-security -Wformat-nonliteral
-                    -Wuninitialized -Winit-self
-                    -Wcast-qual
-                    -Wstrict-overflow
-                    -Wnested-externs
-                    -Wmultichar
-                    -Wundef
-                    -Wc++-compat
-                    -fno-strict-aliasing # fewer compiler assumptions about pointer types
-                    -fexceptions # recommended for multi-threaded C code, also in combination with C++ code
-                    )
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Werror")
+    check_add_cc_flag("-std=c99")   # C99 mode
+    check_add_cc_flag("-pipe")      # Avoid writing temporary files (for compiler speed)
+    check_add_cc_flag("-Wall")      # Warnings
+    check_add_cc_flag("-Wextra")    # More warnings
+    check_add_cc_flag("-Wpedantic") # Standard compliance
+    check_add_cc_flag("-Werror")    # All warnings are errors
+
+    check_add_cc_flag("-Wno-static-in-inline") # Clang doesn't like the use of static inline methods inside static inline methods
+    check_add_cc_flag("-Wno-overlength-strings") # May happen in the nodeset compiler when complex values are directly encoded
+    check_add_cc_flag("-Wno-unused-parameter") # some methods may require unused arguments to cast to a method pointer
+
+    # Use a strict subset of the C and C++ languages
+    check_add_cc_flag("-Wc++-compat")
+
+    # Check that format strings (printf/scanf) are sane
+    check_add_cc_flag("-Wformat")
+    check_add_cc_flag("-Wformat-security")
+    check_add_cc_flag("-Wformat-nonliteral")
+
+    # Check prototype definitions
+    check_add_cc_flag("-Wmissing-prototypes")
+    check_add_cc_flag("-Wstrict-prototypes")
+    check_add_cc_flag("-Wredundant-decls")
+
+    check_add_cc_flag("-Wuninitialized")
+    check_add_cc_flag("-Winit-self")
+    check_add_cc_flag("-Wcast-qual")
+    check_add_cc_flag("-Wstrict-overflow")
+    check_add_cc_flag("-Wnested-externs")
+    check_add_cc_flag("-Wmultichar")
+    check_add_cc_flag("-Wundef")
+    check_add_cc_flag("-fno-strict-aliasing") # fewer compiler assumptions about pointer types
+    check_add_cc_flag("-fexceptions") # recommended for multi-threaded C code, also in combination with C++ code
 
     if (NOT MINGW)
         if(UA_ENABLE_HARDENING)
-            check_cc_flag("-fstack-protector-strong") # more performant stack protector, available since gcc 4.9
-            check_cc_flag("-fstack-clash-protection") # increased reliability of stack overflow detection, available since gcc 8
-            check_cc_flag_untested("-mcet -fcf-protection") # future use (control flow integrity protection)
+            check_add_cc_flag("-fstack-protector-strong") # more performant stack protector, available since gcc 4.9
+            check_add_cc_flag("-fstack-clash-protection") # increased reliability of stack overflow detection, available since gcc 8
+            # future use (control flow integrity protection)
+            check_add_cc_flag("-mcet")
+            check_add_cc_flag("-fcf-protection")
         endif()
 
         # IPO requires too much memory for unit tests
@@ -484,16 +516,21 @@ if(NOT UA_COMPILE_AS_CXX AND (CMAKE_COMPILER_IS_GNUCC OR "x${CMAKE_C_COMPILER_ID
     endif()
 
     if(UA_ENABLE_HARDENING AND ((CMAKE_BUILD_TYPE STREQUAL "Release") OR (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")))
-        check_cc_flag("-D_FORTIFY_SOURCE=2") # run-time buffer overflow detection (needs at least -O1)
+        check_add_cc_flag("-D_FORTIFY_SOURCE=2") # run-time buffer overflow detection (needs at least -O1)
     endif()
 
     # Strip release builds
     if(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel" OR CMAKE_BUILD_TYPE STREQUAL "Release")
-        add_definitions(-ffunction-sections -fdata-sections -fno-unwind-tables
-                        -fno-asynchronous-unwind-tables -fno-math-errno -fno-ident)
+        check_add_cc_flag("-ffunction-sections")
+        check_add_cc_flag("-fdata-sections")
+        check_add_cc_flag("-fno-unwind-tables")
+        check_add_cc_flag("-fno-asynchronous-unwind-tables")
+        check_add_cc_flag("-fno-math-errno")
+        check_add_cc_flag("-fno-ident")
+
         # remove stack-protector with MinSizeRel
         if(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
-            add_definitions(-fno-stack-protector)
+            check_add_cc_flag("-fno-stack-protector")
         endif()
         if(NOT OS9)
             set(CMAKE_C_LINK_FLAGS "${CMAKE_C_LINK_FLAGS} -s")
@@ -512,8 +549,6 @@ if(NOT UA_COMPILE_AS_CXX AND (CMAKE_COMPILER_IS_GNUCC OR "x${CMAKE_C_COMPILER_ID
         endif()
     endif()
 endif()
-
-
 
 if(APPLE)
     set(CMAKE_MACOSX_RPATH 1)
@@ -627,8 +662,7 @@ set(internal_headers ${PROJECT_SOURCE_DIR}/deps/open62541_queue.h
                      ${PROJECT_SOURCE_DIR}/src/server/ua_server_internal.h
                      ${PROJECT_SOURCE_DIR}/src/server/ua_services.h
                      ${PROJECT_SOURCE_DIR}/src/client/ua_client_internal.h
-                     ${PROJECT_SOURCE_DIR}/src/server/ua_server_methodqueue.h
-					 ${PROJECT_SOURCE_DIR}/src/server/ua_asyncmethod_manager.h)
+					 ${PROJECT_SOURCE_DIR}/src/server/ua_server_async.h)
 
 # TODO: make client optional
 set(lib_sources ${PROJECT_SOURCE_DIR}/src/ua_types.c
@@ -650,6 +684,7 @@ set(lib_sources ${PROJECT_SOURCE_DIR}/src/ua_types.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_service_table.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_server_utils.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_server_discovery.c
+				${PROJECT_SOURCE_DIR}/src/server/ua_server_async.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_securechannel_manager.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_session_manager.c
                 ${PROJECT_SOURCE_DIR}/src/pubsub/ua_pubsub_networkmessage.c
@@ -657,8 +692,6 @@ set(lib_sources ${PROJECT_SOURCE_DIR}/src/ua_types.c
                 ${PROJECT_SOURCE_DIR}/src/pubsub/ua_pubsub_reader.c
                 ${PROJECT_SOURCE_DIR}/src/pubsub/ua_pubsub_manager.c
                 ${PROJECT_SOURCE_DIR}/src/pubsub/ua_pubsub_ns0.c
-                ${PROJECT_SOURCE_DIR}/src/server/ua_server_methodqueue.c
-				${PROJECT_SOURCE_DIR}/src/server/ua_asyncmethod_manager.c
                 # services
                 ${PROJECT_SOURCE_DIR}/src/server/ua_services_view.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_services_method.c
@@ -838,7 +871,7 @@ if(UA_NAMESPACE_ZERO STREQUAL "FULL")
     set(UA_FILE_TYPES_BSD ${PROJECT_SOURCE_DIR}/deps/ua-nodeset/Schema/Opc.Ua.Types.bsd)
 else()
     if(NOT UA_FILE_NS0)
-        set(UA_FILE_NS0 ${PROJECT_SOURCE_DIR}/tools/schema/Opc.Ua.NodeSet2.Minimal.xml)
+        set(UA_FILE_NS0 ${PROJECT_SOURCE_DIR}/tools/schema/Opc.Ua.NodeSet2.Reduced.xml)
     endif()
     set(UA_FILE_NODESETS "${UA_FILE_NS0}")
 
@@ -881,6 +914,7 @@ else()
     endif()
 	if(UA_ENABLE_DA)
 		list(APPEND UA_FILE_DATATYPES ${PROJECT_SOURCE_DIR}/tools/schema/datatypes_dataaccess.txt)
+        set(UA_NODESET_FILE_DA ${PROJECT_SOURCE_DIR}/tools/schema/Opc.Ua.NodeSet2.Part8_Subset.xml)
     endif()
     if(UA_ENABLE_TYPEDESCRIPTION)
         list(APPEND UA_FILE_DATATYPES ${PROJECT_SOURCE_DIR}/tools/schema/datatypes_typedescription.txt)
@@ -961,8 +995,9 @@ endif()
 
 ua_generate_nodeset(
     NAME "ns0"
-    FILE ${UA_FILE_NODESETS}
+    FILE ${UA_FILE_NODESETS} ${UA_NODESET_FILE_DA}
     INTERNAL
+    BLACKLIST ${UA_FILE_NS0_BLACKLIST}
     IGNORE "${PROJECT_SOURCE_DIR}/tools/nodeset_compiler/NodeID_NS0_Base.txt"
     DEPENDS_TARGET "open62541-generator-types"
 )
@@ -999,12 +1034,13 @@ if(UA_ENABLE_AMALGAMATION)
     # make sure the open62541_amalgamation target builds before so that amalgamation is finished and it is not executed again for open62541-object
     # and thus may overwrite the amalgamation result during multiprocessor compilation
     # the header is already a dependency of open62541 target itself
-    add_dependencies(open62541-object
-                     open62541-amalgamation-header
-                     open62541-generator-types
-                     open62541-generator-transport
-                     open62541-generator-statuscode
-                     open62541-amalgamation-source)
+    add_custom_target(open62541-code-generation DEPENDS
+                      open62541-amalgamation-header
+                      open62541-generator-types
+                      open62541-generator-transport
+                      open62541-generator-statuscode
+                      open62541-amalgamation-source
+    )
 
     add_library(open62541 $<TARGET_OBJECTS:open62541-object>)
     # the only directory that needs to be included if open62541 (amalgameted) target from
@@ -1019,12 +1055,14 @@ if(UA_ENABLE_AMALGAMATION)
     add_dependencies(open62541-amalgamation-header open62541-generator-namespace)
 else()
     add_library(open62541-object OBJECT ${lib_sources} ${internal_headers} ${exported_headers})
-    add_dependencies(open62541-object
-                     open62541-generator-types
-                     open62541-generator-transport
-                     open62541-generator-statuscode
-                     open62541-generator-namespace
-                     )
+
+    add_custom_target(open62541-code-generation DEPENDS
+                      open62541-generator-types
+                      open62541-generator-transport
+                      open62541-generator-statuscode
+                      open62541-generator-namespace
+                      )
+
     target_include_directories(open62541-object PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
     add_library(open62541-plugins OBJECT ${default_plugin_sources} ${ua_architecture_sources} ${exported_headers})
@@ -1078,6 +1116,8 @@ else()
 
 endif()
 
+add_dependencies(open62541-object open62541-code-generation)
+
 # Ensure that the open62541::open62541 alias can be used inside open62541's build
 add_library(open62541::open62541 ALIAS open62541)
 
@@ -1102,6 +1142,9 @@ GET_PROPERTY(ua_architecture_remove_definitions GLOBAL PROPERTY UA_ARCHITECTURE_
 if (NOT "${ua_architecture_remove_definitions}" STREQUAL "")
   string(REPLACE " " ";" ua_architecture_remove_definitions_list ${ua_architecture_remove_definitions})
   remove_definitions(${ua_architecture_remove_definitions_list})
+  foreach ( flag ${ua_architecture_remove_definitions} )
+      string(REPLACE "${flag}" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+  endforeach()
 endif(NOT "${ua_architecture_remove_definitions}" STREQUAL "")
 
 GET_PROPERTY(ua_architecture_append_to_library GLOBAL PROPERTY UA_ARCHITECTURE_APPEND_TO_LIBRARY)
@@ -1332,4 +1375,3 @@ set_target_properties(open62541-generator-namespace PROPERTIES FOLDER "open62541
 set_target_properties(open62541-generator-statuscode PROPERTIES FOLDER "open62541/generators")
 set_target_properties(open62541-generator-transport PROPERTIES FOLDER "open62541/generators")
 set_target_properties(open62541-generator-types PROPERTIES FOLDER "open62541/generators")
-

@@ -89,7 +89,11 @@ fileNamesFromFolder(const UA_String *folder, size_t *pathsSize, UA_String **path
 
     struct dirent *ent;
     char buf2[PATH_MAX + 1];
-    realpath(buf, buf2);
+    char *res = realpath(buf, buf2);
+    if(!res) {
+        closedir(dir);
+        return UA_STATUSCODE_BADINTERNALERROR;
+    }
     size_t pathlen = strlen(buf2);
     *pathsSize = 0;
     while((ent = readdir (dir)) != NULL && *pathsSize < 256) {
@@ -210,16 +214,16 @@ certificateVerification_verify(void *verificationContext,
     mbedtls_x509_crt remoteCertificate;
 
     /* Temporary Object to parse the trustList */
-    mbedtls_x509_crt *tempCert;
+    mbedtls_x509_crt *tempCert = NULL;
 
     /* Temporary Object to parse the revocationList */
-    mbedtls_x509_crl *tempCrl;
+    mbedtls_x509_crl *tempCrl = NULL;
 
     /* Temporary Object to identify the parent CA when there is no intermediate CA */
-    mbedtls_x509_crt *parentCert;
+    mbedtls_x509_crt *parentCert = NULL;
 
     /* Temporary Object to identify the parent CA when there is intermediate CA */
-    mbedtls_x509_crt *parentCert_2;
+    mbedtls_x509_crt *parentCert_2 = NULL;
 
     /* Flag value to identify if the issuer certificate is found */
     int issuerKnown = 0;

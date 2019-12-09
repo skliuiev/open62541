@@ -65,8 +65,11 @@ UA_SecureChannel_setSecurityPolicy(UA_SecureChannel *channel,
             verifyCertificate(securityPolicy->certificateVerification->context,
                               remoteCertificate);
 
-        if(retval != UA_STATUSCODE_GOOD)
+        if(retval != UA_STATUSCODE_GOOD) {
+            UA_LOG_WARNING(securityPolicy->logger, UA_LOGCATEGORY_SECURITYPOLICY,
+                           "Could not verify the remote certificate");
             return retval;
+        }
     } else {
         UA_LOG_WARNING(securityPolicy->logger, UA_LOGCATEGORY_SECURITYPOLICY,
                        "Security policy None is used to create SecureChannel. Accepting all certificates");
@@ -74,8 +77,11 @@ UA_SecureChannel_setSecurityPolicy(UA_SecureChannel *channel,
 
     retval = securityPolicy->channelModule.
         newContext(securityPolicy, remoteCertificate, &channel->channelContext);
-    if(retval != UA_STATUSCODE_GOOD)
+    if(retval != UA_STATUSCODE_GOOD) {
+        UA_LOG_WARNING(securityPolicy->logger, UA_LOGCATEGORY_SECURITYPOLICY,
+                       "Could not set up the SecureChannel context");
         return retval;
+    }
 
     retval = UA_ByteString_copy(remoteCertificate, &channel->remoteCertificate);
     if(retval != UA_STATUSCODE_GOOD)
@@ -85,11 +91,14 @@ UA_SecureChannel_setSecurityPolicy(UA_SecureChannel *channel,
     retval = securityPolicy->asymmetricModule.
         makeCertificateThumbprint(securityPolicy, &channel->remoteCertificate,
                                   &remoteCertificateThumbprint);
+    if(retval != UA_STATUSCODE_GOOD) {
+        UA_LOG_WARNING(securityPolicy->logger, UA_LOGCATEGORY_SECURITYPOLICY,
+                       "Could not create the certificate thumbprint");
+        return retval;
+    }
 
-    if(retval == UA_STATUSCODE_GOOD)
-        channel->securityPolicy = securityPolicy;
-
-    return retval;
+    channel->securityPolicy = securityPolicy;
+    return UA_STATUSCODE_GOOD;
 }
 
 static void
@@ -1317,6 +1326,7 @@ checkSymHeader(UA_SecureChannel *const channel,
         if(channel->securityToken.tokenId == tokenId) {
             retval = UA_SecureChannel_generateRemoteKeys(channel, channel->securityPolicy);
             UA_ChannelSecurityToken_deleteMembers(&channel->previousSecurityToken);
+            UA_ChannelSecurityToken_init(&channel->previousSecurityToken);
             return retval;
         }
     }
@@ -1329,6 +1339,7 @@ checkSymHeader(UA_SecureChannel *const channel,
         UA_StatusCode retval =
             UA_SecureChannel_generateRemoteKeys(channel, channel->securityPolicy);
         UA_ChannelSecurityToken_deleteMembers(&channel->previousSecurityToken);
+        UA_ChannelSecurityToken_init(&channel->previousSecurityToken);
         return retval;
     }
 

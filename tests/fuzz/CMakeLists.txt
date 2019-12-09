@@ -6,6 +6,8 @@ include_directories("${PROJECT_SOURCE_DIR}/src/server")
 # testing_clock.h
 include_directories("${PROJECT_SOURCE_DIR}/tests/testing-plugins")
 
+add_definitions(-DUA_sleep_ms=UA_comboSleep)
+
 if(NOT MSVC)
     add_definitions(-Wno-deprecated-declarations)
 endif()
@@ -102,6 +104,9 @@ add_fuzzer(fuzz_mdns_message ${PROJECT_SOURCE_DIR}/deps/mdnsd/tests/fuzz/fuzz_md
 add_fuzzer(fuzz_mdns_xht ${PROJECT_SOURCE_DIR}/deps/mdnsd/tests/fuzz/fuzz_mdns_xht.cc)
 
 
+add_fuzzer(fuzz_base64_encode fuzz_base64_encode.cc)
+add_fuzzer(fuzz_base64_decode fuzz_base64_decode.cc)
+
 if(UA_ENABLE_JSON_ENCODING)
     add_fuzzer(fuzz_json_decode fuzz_json_decode.cc)
     add_fuzzer(fuzz_json_decode_encode fuzz_json_decode_encode.cc)
@@ -115,10 +120,10 @@ FOREACH(f ${CORPUS_FILES})
 ENDFOREACH(f)
 
 
-file(GLOB CORPUS_FILES ${PROJECT_SOURCE_DIR}/deps/mdnsd/tests/fuzz/fuzz_mdns_message_corpus/*)
-FOREACH(f ${CORPUS_FILES})
-    LIST(APPEND CORPUS_CMDS COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/fuzz_mdns_message "${f}")
-ENDFOREACH(f)
+#file(GLOB CORPUS_FILES ${PROJECT_SOURCE_DIR}/deps/mdnsd/tests/fuzz/fuzz_mdns_message_corpus/*)
+#FOREACH(f ${CORPUS_FILES})
+#    LIST(APPEND CORPUS_CMDS COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/fuzz_mdns_message "${f}")
+#ENDFOREACH(f)
 
 add_custom_target(run_fuzzer ${CORPUS_CMDS}
                   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
