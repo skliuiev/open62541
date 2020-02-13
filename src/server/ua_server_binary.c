@@ -24,6 +24,7 @@
 
 #include "ua_server_internal.h"
 #include "ua_services.h"
+#include "ua_service_table_internal.h"
 
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 // store the authentication token and session ID so we can help fuzzing by setting
@@ -658,6 +659,7 @@ processMSG(UA_Server *server, UA_SecureChannel *channel,
                 UA_LOG_INFO_CHANNEL(&server->config.logger, channel,
                                     "Unknown request with type identifier %" PRIi32,
                                     requestTypeId.identifier.numeric);
+            }
             return sendServiceFault(channel, msg, requestPos,
                                     &UA_TYPES[UA_TYPES_SERVICEFAULT], requestId,
                                     UA_STATUSCODE_BADSERVICEUNSUPPORTED);
