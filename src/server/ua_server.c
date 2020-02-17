@@ -274,6 +274,9 @@ UA_Server_init(UA_Server *server) {
     UA_LOCK_INIT(server->serviceMutex)
 #endif
 
+    /* Initialize service overrite table */
+    UA_ServiceTable_init(&server->serviceTable);
+    
     /* Initialize the handling of repeated callbacks */
     UA_Timer_init(&server->timer);
 

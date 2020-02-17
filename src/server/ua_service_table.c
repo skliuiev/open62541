@@ -10,39 +10,28 @@ UA_Server_AddService(UA_Server *server, UA_UInt32 requestNodeId, UA_UInt32 reque
                      UA_Boolean requiresSession) {
     UA_ServiceTable *table = &server->serviceTable;
 
-    if(0 == table->size || NULL == table->entries) {
-        table->entries = (UA_ServiceTableEntry *)UA_malloc(sizeof(struct UA_ServiceTableEntry));
-        if(NULL == table->entries) {
-            return UA_STATUSCODE_BADOUTOFMEMORY;
+    UA_ServiceTableEntry *it = NULL;
+
+    LIST_FOREACH(it, &table->services, pointers) {
+        if (requestNodeId == it->requestNodeId) {
+            return UA_STATUSCODE_BADINTERNALERROR;
         }
-        table->entries[table->size].requestNodeId = requestNodeId;
-        table->entries[table->size].requestTypeId = requestTypeId;
-        table->entries[table->size].responceTypeId = responseTypeId;
-        table->entries[table->size].service = service;
-        table->entries[table->size].requiresSession = requiresSession;
-        ++table->size;
-        return UA_STATUSCODE_GOOD;
     }
 
-    if(NULL != table->entries) {
-        UA_UInt16 newSize = (UA_UInt16)(table->size + 1);
-        void *entries = UA_realloc(table->entries, sizeof(struct UA_ServiceTableEntry) * newSize);
-        if(NULL != entries) {
-            table->entries = (UA_ServiceTableEntry *)entries;
-        }
+    UA_ServiceTableEntry *entry = (UA_ServiceTableEntry *)UA_malloc(sizeof(struct UA_ServiceTableEntry));
 
-        if(NULL == table->entries) {
-            return UA_STATUSCODE_BADOUTOFMEMORY;
-        }
-
-        table->entries[table->size].requestNodeId = requestNodeId;
-        table->entries[table->size].requestTypeId = requestTypeId;
-        table->entries[table->size].responceTypeId = responseTypeId;
-        table->entries[table->size].service = service;
-        table->entries[table->size].requiresSession = requiresSession;
-        ++table->size;
-        return UA_STATUSCODE_GOOD;
+    if (NULL == entry) {
+        return UA_STATUSCODE_BADOUTOFMEMORY;
     }
+
+    entry->requestNodeId = requestNodeId;
+    entry->requestTypeId = requestTypeId;
+    entry->responceTypeId = responseTypeId;
+    entry->requiresSession = requiresSession;
+    entry->service = service;
+
+    LIST_INSERT_HEAD(&table->services, entry, pointers);
+
     return UA_STATUSCODE_GOOD;
 }
 
@@ -52,22 +41,38 @@ UA_Server_DispatchService(UA_Server *server, const UA_UInt32 requestNodeId,
                           const UA_DataType **responseType, UA_Service *service,
                           UA_Boolean *requiresSession) {
     UA_ServiceTable *table = &server->serviceTable;
-    for(int i = 0; i < table->size; ++i) {
-        if(requestNodeId == table->entries[i].requestNodeId) {
-            *service = (UA_Service)table->entries[i].service;
-            *requestType = &UA_TYPES[table->entries[i].requestTypeId];
-            *responseType = &UA_TYPES[table->entries[i].responceTypeId];
-            *requiresSession = table->entries[i].requiresSession;
+
+    UA_ServiceTableEntry *it = NULL;
+
+    LIST_FOREACH(it, &table->services, pointers) {
+        if (requestNodeId == it->requestNodeId) {
+            *service = (UA_Service)it->service;
+            *requestType = &UA_TYPES[it->requestTypeId];
+            *responseType = &UA_TYPES[it->responceTypeId];
+            *requiresSession = it->requiresSession;
         }
     }
 }
 
 void
-UA_ServiceTable_clean(UA_ServiceTable *serviceTable) {
-    if(NULL != serviceTable) {
-        if(NULL != serviceTable->entries) {
-            UA_free(serviceTable->entries);
-            serviceTable->size = 0;
-        }
+UA_ServiceTable_init(UA_ServiceTable *table) {
+    if (NULL == table) {
+        return;
     }
+
+    LIST_INIT(&table->services);
+}
+
+void
+UA_ServiceTable_clean(UA_ServiceTable *table) {
+
+    if (NULL == table) {
+        return;
+    }
+
+	UA_ServiceTableEntry *it_temp, *it;
+	LIST_FOREACH_SAFE(it, &table->services, pointers, it_temp) {
+		LIST_REMOVE(it, pointers);
+		UA_free(it);
+	}
 }

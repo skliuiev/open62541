@@ -3,14 +3,15 @@
 
 #include <open62541/config.h>
 #include "ua_services.h"
+#include "open62541_queue.h"
 
 _UA_BEGIN_DECLS
 
-struct UA_ServiceTable;
-typedef struct UA_ServiceTable UA_ServiceTable;
-
 struct UA_ServiceTableEntry;
 typedef struct UA_ServiceTableEntry UA_ServiceTableEntry;
+
+struct UA_ServiceTable;
+typedef struct UA_ServiceTable UA_ServiceTable;
 
 struct UA_ServiceTableEntry {
     UA_UInt32 requestNodeId;
@@ -18,11 +19,11 @@ struct UA_ServiceTableEntry {
     UA_UInt32 responceTypeId;
     UA_ServiceCallback service;
     UA_Boolean requiresSession;
+    LIST_ENTRY(UA_ServiceTableEntry) pointers;
 };
 
 struct UA_ServiceTable {
-    UA_UInt16 size;
-    UA_ServiceTableEntry *entries;
+    LIST_HEAD(ServiceTable, UA_ServiceTableEntry) services;
 };
 
 void
@@ -32,7 +33,10 @@ UA_Server_DispatchService(UA_Server *server, const UA_UInt32 requestNodeId,
                           UA_Boolean *requiresSession);
 
 void
-UA_ServiceTable_clean(UA_ServiceTable *serviceTable);
+UA_ServiceTable_init(UA_ServiceTable *table);
+
+void
+UA_ServiceTable_clean(UA_ServiceTable *table);
 
 _UA_END_DECLS
 
