@@ -4,13 +4,13 @@
  *
  *    Copyright 2018 (c) Mark Giraud, Fraunhofer IOSB
  *    Copyright 2018 (c) Daniel Feist, Precitec GmbH & Co. KG
+ *    Copyright 2018 (c) HMS Industrial Networks AB (Author: Jonas Green)
  */
 
 #include <open62541/plugin/securitypolicy_default.h>
+#ifdef UA_ENABLE_ENCRYPTION_MBEDTLS
 #include <open62541/plugin/securitypolicy_mbedtls_common.h>
 #include <open62541/util.h>
-
-#ifdef UA_ENABLE_ENCRYPTION
 
 
 #include <mbedtls/aes.h>
