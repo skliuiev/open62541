@@ -24,7 +24,7 @@
 
 #include "ua_server_internal.h"
 #include "ua_services.h"
-#include "ua_service_table_internal.h"
+#include "ua_services_table_internal.h"
 
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 // store the authentication token and session ID so we can help fuzzing by setting
@@ -96,15 +96,12 @@ getServicePointers(UA_UInt32 requestTypeId, const UA_DataType **requestType,
         *responseType = &UA_TYPES[UA_TYPES_FINDSERVERSRESPONSE];
         *requiresSession = false;
         break;
-#ifdef UA_ENABLE_DISCOVERY
-# ifdef UA_ENABLE_DISCOVERY_MULTICAST
     case UA_NS0ID_FINDSERVERSONNETWORKREQUEST_ENCODING_DEFAULTBINARY:
         *service = (UA_Service)Service_FindServersOnNetwork;
         *requestType = &UA_TYPES[UA_TYPES_FINDSERVERSONNETWORKREQUEST];
         *responseType = &UA_TYPES[UA_TYPES_FINDSERVERSONNETWORKRESPONSE];
         *requiresSession = false;
         break;
-# endif
     case UA_NS0ID_REGISTERSERVERREQUEST_ENCODING_DEFAULTBINARY:
         *service = (UA_Service)Service_RegisterServer;
         *requestType = &UA_TYPES[UA_TYPES_REGISTERSERVERREQUEST];
@@ -117,7 +114,6 @@ getServicePointers(UA_UInt32 requestTypeId, const UA_DataType **requestType,
         *responseType = &UA_TYPES[UA_TYPES_REGISTERSERVER2RESPONSE];
         *requiresSession = false;
         break;
-#endif
     case UA_NS0ID_CREATESESSIONREQUEST_ENCODING_DEFAULTBINARY:
         *service = (UA_Service)(uintptr_t)Service_CreateSession;
         *requestType = &UA_TYPES[UA_TYPES_CREATESESSIONREQUEST];

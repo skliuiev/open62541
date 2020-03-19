@@ -136,7 +136,7 @@ option(UA_ENABLE_METHODCALLS "Enable the Method service set" ON)
 option(UA_ENABLE_NODEMANAGEMENT "Enable dynamic addition and removal of nodes at runtime" ON)
 option(UA_ENABLE_SUBSCRIPTIONS "Enable subscriptions support." ON)
 option(UA_ENABLE_SUBSCRIPTIONS_EVENTS "Enable the use of event subscriptions" OFF)
-option(UA_ENABLE_DISCOVERY "Enable Discovery Service (LDS)" ON)
+option(UA_ENABLE_DISCOVERY "Enable Discovery Service (LDS)" OFF)
 option(UA_ENABLE_SUBSCRIPTIONS_ALARMS_CONDITIONS "Enable the use of A&C. (EXPERIMENTAL)" OFF)
 option(UA_ENABLE_DISCOVERY_MULTICAST "Enable Discovery Service with multicast support (LDS-ME)" OFF)
 option(UA_ENABLE_ENCRYPTION "Enable encryption support (uses mbedTLS by default)" OFF)
@@ -723,10 +723,11 @@ set(internal_headers ${PROJECT_SOURCE_DIR}/deps/open62541_queue.h
                      ${PROJECT_SOURCE_DIR}/src/pubsub/ua_pubsub.h
                      ${PROJECT_SOURCE_DIR}/src/pubsub/ua_pubsub_manager.h
                      ${PROJECT_SOURCE_DIR}/src/pubsub/ua_pubsub_ns0.h
-		     ${PROJECT_SOURCE_DIR}/src/server/ua_server_async.h
+		             ${PROJECT_SOURCE_DIR}/src/server/ua_server_async.h
                      ${PROJECT_SOURCE_DIR}/src/server/ua_server_internal.h
                      ${PROJECT_SOURCE_DIR}/src/server/ua_services.h
-                     ${PROJECT_SOURCE_DIR}/src/server/ua_service_table_internal.h
+                     ${PROJECT_SOURCE_DIR}/src/server/ua_services_table_internal.h
+                     ${PROJECT_SOURCE_DIR}/src/server/ua_services_discovery_internal.h
                      ${PROJECT_SOURCE_DIR}/src/client/ua_client_internal.h
 		     ${PROJECT_SOURCE_DIR}/src/server/ua_server_async.h)
 
@@ -748,7 +749,7 @@ set(lib_sources ${PROJECT_SOURCE_DIR}/src/ua_types.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_server_ns0.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_server_config.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_server_binary.c
-                ${PROJECT_SOURCE_DIR}/src/server/ua_service_table.c
+                ${PROJECT_SOURCE_DIR}/src/server/ua_services_table.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_server_utils.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_server_discovery.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_server_async.c
@@ -768,6 +769,8 @@ set(lib_sources ${PROJECT_SOURCE_DIR}/src/ua_types.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_services_securechannel.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_services_nodemanagement.c
                 ${PROJECT_SOURCE_DIR}/src/server/ua_services_discovery_multicast.c
+                ${PROJECT_SOURCE_DIR}/src/server/ua_services_discovery_internal.c
+                ${PROJECT_SOURCE_DIR}/src/server/ua_services_discovery_multicast_internal.c
                 # client
                 ${PROJECT_SOURCE_DIR}/src/client/ua_client.c
                 ${PROJECT_SOURCE_DIR}/src/client/ua_client_connect.c
@@ -963,6 +966,7 @@ else()
     set(UA_FILE_NODESETS "${UA_FILE_NS0}")
 
     set(UA_FILE_DATATYPES ${PROJECT_SOURCE_DIR}/tools/schema/datatypes_minimal.txt)
+    
     set(UA_FILE_NODEIDS ${PROJECT_SOURCE_DIR}/tools/schema/NodeIds.csv)
     set(UA_FILE_STATUSCODES ${PROJECT_SOURCE_DIR}/tools/schema/StatusCode.csv)
     set(UA_FILE_TYPES_BSD ${PROJECT_SOURCE_DIR}/tools/schema/Opc.Ua.Types.bsd)
@@ -983,10 +987,6 @@ else()
     if(UA_ENABLE_HISTORIZING)
         list(APPEND UA_FILE_DATATYPES ${PROJECT_SOURCE_DIR}/tools/schema/datatypes_historizing.txt)
         list(APPEND UA_FILE_NODESETS ${PROJECT_SOURCE_DIR}/tools/schema/Opc.Ua.NodeSet2.HistorizingMinimal.xml)
-    endif()
-
-    if(UA_ENABLE_DISCOVERY)
-        list(APPEND UA_FILE_DATATYPES ${PROJECT_SOURCE_DIR}/tools/schema/datatypes_discovery.txt)
     endif()
 
     if(UA_ENABLE_QUERY)

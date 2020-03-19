@@ -27,7 +27,7 @@
 #include "ua_timer.h"
 #include "ua_util_internal.h"
 #include "ua_workqueue.h"
-#include "ua_service_table_internal.h"
+#include "ua_services_table_internal.h"
 
 _UA_BEGIN_DECLS
 

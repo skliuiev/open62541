@@ -2,7 +2,7 @@
 #include <open62541/types_generated_encoding_binary.h>
 
 #include "ua_server_internal.h"
-#include "ua_service_table_internal.h"
+#include "ua_services_table_internal.h"
 
 UA_StatusCode
 UA_Server_AddService(UA_Server *server, UA_UInt32 requestNodeId, UA_UInt32 requestTypeId,

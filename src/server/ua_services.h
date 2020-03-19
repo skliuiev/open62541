@@ -75,10 +75,6 @@ void Service_GetEndpoints(UA_Server *server, UA_Session *session,
                           const UA_GetEndpointsRequest *request,
                           UA_GetEndpointsResponse *response);
 
-#ifdef UA_ENABLE_DISCOVERY
-
-# ifdef UA_ENABLE_DISCOVERY_MULTICAST
-
 /**
  * FindServersOnNetwork Service
  * ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -88,8 +84,6 @@ void Service_GetEndpoints(UA_Server *server, UA_Session *session,
 void Service_FindServersOnNetwork(UA_Server *server, UA_Session *session,
                                   const UA_FindServersOnNetworkRequest *request,
                                   UA_FindServersOnNetworkResponse *response);
-
-# endif /* UA_ENABLE_DISCOVERY_MULTICAST */
 
 /**
  * RegisterServer
@@ -108,8 +102,6 @@ void Service_RegisterServer(UA_Server *server, UA_Session *session,
 void Service_RegisterServer2(UA_Server *server, UA_Session *session,
                             const UA_RegisterServer2Request *request,
                             UA_RegisterServer2Response *response);
-
-#endif /* UA_ENABLE_DISCOVERY */
 
 /**
  * SecureChannel Service Set
